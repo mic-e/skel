@@ -21,6 +21,8 @@ def parse_args():
                       help="re-install files even if they didn't change")
     pars.add_argument("--backup", type=str, default=None,
                       help="backup all overwritten files to this tar file")
+    pars.add_argument("--simulate", action="store_true",
+                      help="don't do anything, just print the commands")
     pars.add_argument("skeldir", nargs="+",
                       help="Source directory for installation")
 
@@ -142,6 +144,12 @@ def main():
 
         print("")
 
+    if args.simulate:
+        warnings.append("simulation run:")
+        warnings.append("none of these actions will actually be performed.")
+        if args.backup and overwritten_tgtfiles:
+            warnings.append("this includes your backup!")
+
     if warnings:
         print("\x1b[1;33m[Warnings]\x1b[m\n")
         for warning in warnings:
@@ -160,15 +168,18 @@ def main():
         print("\x1b[1mtar cf\x1b[m " + args.backup + " \x1b[1m-C\x1b[m " +
               "\x1b[3m" + tgtdir + "\x1b[m", end="")
 
-        import tarfile
-        tar = tarfile.open(args.backup, 'w')
+        if not args.simulate:
+            import tarfile
+            tar = tarfile.open(args.backup, 'w')
 
         for tgtfile in overwritten_tgtfiles:
             shortname = os.path.relpath(tgtfile, tgtdir)
             print(" " + shortname, end="")
-            tar.add(tgtfile)
+            if not args.simulate:
+                tar.add(tgtfile)
 
-        tar.close()
+        if not args.simulate:
+            tar.close()
 
         print("")
 
@@ -176,29 +187,35 @@ def main():
     # create directories
     for tgtfile in mkdirlist:
         print("\x1b[1mmkdir\x1b[m \x1b[3m" + tgtfile + "\x1b[m")
-        os.mkdir(tgtfile)
+        if not args.simulate:
+            os.mkdir(tgtfile)
 
     # install files
     for srcfile, tgtfile, exists, _ in installlist:
         if exists:
             print("\x1b[1mrm\x1b[m " + tgtfile)
-            os.unlink(tgtfile)
+            if not args.simulate:
+                os.unlink(tgtfile)
 
         if args.symlink:
             print("\x1b[1mln -s\x1b[m " + srcfile + " " + tgtfile)
-            os.symlink(srcfile, tgtfile)
+            if not args.simulate:
+                os.symlink(srcfile, tgtfile)
         elif args.hardlink:
             print("\x1b[1mln\x1b[m " + srcfile + " " + tgtfile)
-            os.link(srcfile, tgtfile)
+            if not args.simulate:
+                os.link(srcfile, tgtfile)
         else:
             print("\x1b[1mcp\x1b[m " + srcfile + " " + tgtfile)
-            data = open(srcfile, "rb").read()
-            open(tgtfile, "wb").write(data)
+            if not args.simulate:
+                data = open(srcfile, "rb").read()
+                open(tgtfile, "wb").write(data)
 
             if os.stat(srcfile).st_mode & (64 + 8 + 1):
                 #set x flag
                 print("\x1b[1mchmod +x\x1b[m " + tgtfile)
-                os.chmod(tgtfile, os.stat(tgtfile).st_mode | (64 + 8 + 1))
+                if not args.simulate:
+                    os.chmod(tgtfile, os.stat(tgtfile).st_mode | (64 + 8 + 1))
 
 if __name__ == "__main__":
     try:
