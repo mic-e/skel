@@ -87,18 +87,18 @@ def main():
                     else:
                         exists = False
 
-                    installlist.append((srcfile, tgtfile, exists, skeldir))
-
                     if tgtfile in dupeinstalls:
-                        print("\x1b[33mWARNING\x1b[m: " + tgtfile + " is " +
-                              "installed from " + dupeinstalls[tgtfile] +
-                              ", then from " + skeldir + "; ignoring " +
-                              dupeinstalls[tgtfile])
+                        print("\x1b[33mWARNING\x1b[m: " + tgtfile + " from " +
+                              dupeinstalls[tgtfile] + " obsolted by " +
+                              skeldir)
 
                         installlist = [entry for entry in installlist if
                                        entry[1] != tgtfile]
 
                     dupeinstalls[tgtfile] = skeldir
+
+                    installlist.append((srcfile, tgtfile, exists, skeldir))
+
 
     if not installlist and not mkdirlist:
         raise InstException("Nothing to be installed")
