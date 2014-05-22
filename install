@@ -141,6 +141,9 @@ def main():
 
         if args.backup and not overwritten_tgtfiles:
             warnings.append("nothing to backup")
+        elif not args.backup and overwritten_tgtfiles:
+            warnings.append("files will be overwritten, " +
+                            "but no backup will be performed")
 
         print("")
 
