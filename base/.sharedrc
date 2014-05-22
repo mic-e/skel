@@ -36,7 +36,7 @@ eval $(dircolors -b ~/.dircolors)
 alias ls=" ls --color=auto"
 alias tmp=". tmp"
 alias pymv="noglob command pymv"
-alias ntfsmount='mount -ouid=$UID,umask=022'
+alias dumbmount='mount -ouid=$UID,umask=022'
 
 # prompt
 PROMPTCOLOR_COMMAND="echo '32;1m'"
