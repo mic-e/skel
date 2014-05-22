@@ -34,6 +34,7 @@ def main():
     mkdirlist = []
     installlist = []
     dupeinstalls = {}
+    warnings = []
 
     # scan skeldir, check for actions to perform (fill mkdirlist, installlist)
     for skeldir in args.skeldir:
@@ -88,7 +89,7 @@ def main():
                         exists = False
 
                     if tgtfile in dupeinstalls:
-                        print("\x1b[33mWARNING\x1b[m: " + tgtfile + " from " +
+                        warnings.append(tgtfile + " from " +
                               dupeinstalls[tgtfile] + " obsolted by " +
                               skeldir)
 
@@ -122,6 +123,13 @@ def main():
 
             print(tgtfile.ljust(maxtgtfilelen) + " from \x1b[1m" +
                   skeldir.ljust(maxskeldirlen) + "\x1b[m " + warning)
+
+        print("")
+
+    if warnings:
+        print("Warnings:\n")
+        for warning in warnings:
+            print(warning)
 
         print("")
 
