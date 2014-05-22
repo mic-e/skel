@@ -17,6 +17,8 @@ def parse_args():
                       help="Instead of copying the files, hardlink them")
     pars.add_argument("--to-etc-skel", action="store_true",
                       help="Instead of ~, install to /etc/skel")
+    pars.add_argument("--force-unchanged-files", action="store_true",
+                      help="re-install files even if they didn't change")
     pars.add_argument("skeldir", nargs="+",
                       help="Source directory for installation")
 
@@ -78,11 +80,12 @@ def main():
                             raise InstException("Existing dir " + tgtfile +
                                                 " prevents file installation")
 
-                        # check whether the file differs
-                        tgtdata = open(tgtfile, 'rb').read()
-                        srcdata = open(srcfile, 'rb').read()
-                        if tgtdata == srcdata:
-                            continue
+                        if not args.force_unchanged_files:
+                            # check whether the file differs
+                            tgtdata = open(tgtfile, 'rb').read()
+                            srcdata = open(srcfile, 'rb').read()
+                            if tgtdata == srcdata:
+                                continue
 
                         exists = True
                     else:
