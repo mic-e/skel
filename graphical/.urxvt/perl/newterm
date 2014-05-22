@@ -1,0 +1,114 @@
+#! perl
+
+=head1 NAME
+
+newterm - keysym to open a new terminal window in the current cwd
+
+=head1 DESCRIPTION
+
+extension that provides a keysym to open a new urxvt terminal window in the
+current cwd.
+
+the extension determines the current fg process group, finds a member
+process of that group, and tries to determine its cwd.
+
+this is only possible if the terminal process actually has permission to
+do that; if for example the member process belongs to root, it tries to
+fallback by checking its parent's cwd, etc, etc.
+if it can't read a single cwd, it falls back to $HOME.
+
+Once it has found a fitting cwd, it runs the launcher command, with
+$cwd and the newterm command as arguments.
+
+Example configuration:
+
+    URxvt.keysym.C-Enter:   perl:newwindow:open
+    URxvt.newterm-launcher: launch_at
+    URxvt.newterm-command:  newterm
+
+Requires cpan POSIX::2008.
+
+=cut
+
+use strict;
+use warnings;
+
+use POSIX::2008 qw( ptsname );
+
+sub dbg {
+    my ($text) = @_;
+    $ENV{"DEBUG_URXVT_NEWTERM"} and warn $text;
+}
+
+sub findfgpid {
+    my ($ptsname) = @_;
+
+    # fallback PID: our PID.
+    my $fgpid=$$;
+    my %ppids=();
+
+    # instead of using the output of ps, we could also manually
+    # iterate over all processes in /proc and read their stat
+    # file. feel free to do that, if you _really_ want.
+    open my $ps_pipe, "-|", "ps", "-axo", "tty,tpgid,pgid,pid,ppid", "--no-header"
+        or die "Could not open ps pipe - $!";
+
+    while (my $l = <$ps_pipe>) {
+        chomp $l;
+        my ($tty, $tpgid, $pgid, $pid, $ppid) = split " ", $l;
+        if ($tpgid == $pgid) {
+            if ("/dev/" . $tty eq $ptsname) {
+                $fgpid=$pid;
+            }
+        }
+
+        # store the parent pid for every process,
+        # because if we can't ask for a process's cwd,
+        # we want to try again for its parent.
+        $ppids{$pid}=$ppid;
+    }
+    close $ps_pipe;
+
+    return ($fgpid, %ppids);
+}
+
+sub on_user_command {
+    my ($self, $cmd) = @_;
+
+    return unless $cmd eq 'newwindow:open';
+
+    my $ptsname = ptsname $self->pty_fd;
+    my ($fgpid, %ppids) = findfgpid $ptsname;
+    dbg "fgpid for $ptsname: $fgpid";
+
+    my $cwd;
+    while (1) {
+        if ($cwd = readlink "/proc/$fgpid/cwd") {
+            dbg "cwd for $fgpid: $cwd";
+            last;
+        } else {
+            dbg "cwd for $fgpid: ?";
+            # try again with the parent's PID
+            $fgpid=$ppids{$fgpid} or
+                $fgpid=1;
+
+            # we couldn't read the cwd of _any_ of the processes...
+            # just fallback to our homefolder.
+            # this should pretty much never happen, as every process
+            # on our tty should have $$ as grand-grandparent,
+            # and we're able to read /proc/self/cwd
+            if ($fgpid == 1) {
+                dbg "falling back to cwd ~";
+                last $cwd = $ENV{"HOME"};
+            }
+        }
+    }
+
+    my $launcher=$self->x_resource("newterm-launcher")
+        or die "X resource undefined: newterm-launcher - $!";
+    my $command=$self->x_resource("newterm-command")
+        or die "X resource undefined: newterm-command - $!";
+
+    dbg "system $launcher, $cwd, $command";
+    system $launcher, $cwd, $command;
+}
