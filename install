@@ -33,7 +33,7 @@ def main():
     # lists of file actions to perform
     mkdirlist = []
     installlist = []
-    dupeinstalls = collections.defaultdict(lambda: list())
+    dupeinstalls = {}
 
     # scan skeldir, check for actions to perform (fill mkdirlist, installlist)
     for skeldir in args.skeldir:
@@ -74,8 +74,8 @@ def main():
                     # it's a file, so we need to copy it
                     if os.path.exists(tgtfile):
                         if os.path.isdir(tgtfile):
-                            raise InstException("Existing dir " + tgtfile + " " +
-                                            "prevents file installation")
+                            raise InstException("Existing dir " + tgtfile +
+                                                " prevents file installation")
 
                         # check whether the file differs
                         tgtdata = open(tgtfile, 'rb').read()
@@ -88,19 +88,17 @@ def main():
                         exists = False
 
                     installlist.append((srcfile, tgtfile, exists, skeldir))
-                    dupeinstalls[tgtfile].append(srcfile)
 
-    # check whether multiple sources will be installed to one target location
-    error = False
-    for tgtfile, srcfiles in dupeinstalls.items():
-        if len(srcfiles) > 1:
-            error = True
-            print("multiple files would be installed to " + tgtfile + ":\n\t" +
-                "\n\t".join(srcfiles))
+                    if tgtfile in dupeinstalls:
+                        print("\x1b[33mWARNING\x1b[m: " + tgtfile + " is " +
+                              "installed from " + dupeinstalls[tgtfile] +
+                              ", then from " + skeldir + "; ignoring " +
+                              dupeinstalls[tgtfile])
 
-    if error:
-        raise InstException("Duplicate installs; refusing to continue")
-    del dupeinstalls
+                        installlist = [entry for entry in installlist if
+                                       entry[1] != tgtfile]
+
+                    dupeinstalls[tgtfile] = skeldir
 
     if not installlist and not mkdirlist:
         raise InstException("Nothing to be installed")
@@ -108,7 +106,7 @@ def main():
     # ask for user confirmation
     if mkdirlist:
         print("The following directories will be created:\n\n" +
-            "\n".join(mkdirlist) + "\n")
+              "\n".join(mkdirlist) + "\n")
 
     if installlist:
         print("The following files will be installed:\n")
@@ -118,19 +116,18 @@ def main():
 
         for _, tgtfile, exists, skeldir in installlist:
             if exists:
-                warning = "\x1b[31;1m[Existing file will be overwritten!]\x1b[m"
+                warning = "\x1b[31;1m[Overwriting existing file!]\x1b[m"
             else:
                 warning = ""
 
             print(tgtfile.ljust(maxtgtfilelen) + " from \x1b[1m" +
-                skeldir.ljust(maxskeldirlen) + "\x1b[m " + warning)
+                  skeldir.ljust(maxskeldirlen) + "\x1b[m " + warning)
 
         print("")
 
     i = input("Continue [Y/n]? ")
     if i not in {"Y", "y", ""}:
         raise InstException("Aborted by user")
-
 
     # do installation
     # create directories
