@@ -19,6 +19,8 @@ def parse_args():
                       help="Instead of ~, install to /etc/skel")
     pars.add_argument("--force-unchanged-files", action="store_true",
                       help="re-install files even if they didn't change")
+    pars.add_argument("--backup", type=str, default=None,
+                      help="backup all overwritten files to this tar file")
     pars.add_argument("skeldir", nargs="+",
                       help="Source directory for installation")
 
@@ -37,6 +39,7 @@ def main():
     installlist = []
     dupeinstalls = {}
     warnings = []
+    overwritten_tgtfiles = []
 
     # scan skeldir, check for actions to perform (fill mkdirlist, installlist)
     for skeldir in args.skeldir:
@@ -109,23 +112,33 @@ def main():
 
     # ask for user confirmation
     if mkdirlist:
-        print("The following directories will be created:\n\n" +
-              "\n".join(mkdirlist) + "\n")
+        print("The following directories will be created:\n")
+        for tgtfile in mkdirlist:
+            print("\x1b[3m" + tgtfile + "\x1b[m")
+
+        print("")
 
     if installlist:
         print("The following files will be installed:\n")
-
         maxtgtfilelen = len(max(installlist, key=lambda x: len(x[1]))[1])
         maxskeldirlen = len(max(installlist, key=lambda x: len(x[3]))[3])
 
         for _, tgtfile, exists, skeldir in installlist:
             if exists:
-                warning = "\x1b[31;1m[Overwriting existing file!]\x1b[m"
+                if args.backup:
+                    warning = "\x1b[33m[File will be backed up]\x1b[m"
+                else:
+                    warning = "\x1b[31;1m[File will be overwritten]\x1b[m"
+
+                overwritten_tgtfiles.append(tgtfile)
             else:
                 warning = ""
 
             print(tgtfile.ljust(maxtgtfilelen) + " from \x1b[1m" +
                   skeldir.ljust(maxskeldirlen) + "\x1b[m " + warning)
+
+        if args.backup and not overwritten_tgtfiles:
+            warnings.append("nothing to backup")
 
         print("")
 
@@ -140,32 +153,51 @@ def main():
     if i not in {"Y", "y", ""}:
         raise InstException("Aborted by user")
 
+    print("")
+
+    # create backup
+    if args.backup and overwritten_tgtfiles:
+        print("\x1b[1mtar cf\x1b[m " + args.backup + " \x1b[1m-C\x1b[m " +
+              "\x1b[3m" + tgtdir + "\x1b[m", end="")
+
+        import tarfile
+        tar = tarfile.open(args.backup, 'w')
+
+        for tgtfile in overwritten_tgtfiles:
+            shortname = os.path.relpath(tgtfile, tgtdir)
+            print(" " + shortname, end="")
+            tar.add(tgtfile)
+
+        tar.close()
+
+        print("")
+
     # do installation
     # create directories
     for tgtfile in mkdirlist:
-        print("mkdir " + tgtfile)
+        print("\x1b[1mmkdir\x1b[m \x1b[3m" + tgtfile + "\x1b[m")
         os.mkdir(tgtfile)
 
     # install files
     for srcfile, tgtfile, exists, _ in installlist:
         if exists:
-            print("rm " + tgtfile)
+            print("\x1b[1mrm\x1b[m " + tgtfile)
             os.unlink(tgtfile)
 
         if args.symlink:
-            print("ln -s " + srcfile + " " + tgtfile)
+            print("\x1b[1mln -s\x1b[m " + srcfile + " " + tgtfile)
             os.symlink(srcfile, tgtfile)
         elif args.hardlink:
-            print("ln " + srcfile + " " + tgtfile)
+            print("\x1b[1mln\x1b[m " + srcfile + " " + tgtfile)
             os.link(srcfile, tgtfile)
         else:
-            print("cp " + srcfile + " " + tgtfile)
+            print("\x1b[1mcp\x1b[m " + srcfile + " " + tgtfile)
             data = open(srcfile, "rb").read()
             open(tgtfile, "wb").write(data)
 
             if os.stat(srcfile).st_mode & (64 + 8 + 1):
                 #set x flag
-                print("chmod +x " + tgtfile)
+                print("\x1b[1mchmod +x\x1b[m " + tgtfile)
                 os.chmod(tgtfile, os.stat(tgtfile).st_mode | (64 + 8 + 1))
 
 if __name__ == "__main__":
