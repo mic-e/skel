@@ -89,9 +89,9 @@ def main():
                         exists = False
 
                     if tgtfile in dupeinstalls:
-                        warnings.append(tgtfile + " from " +
-                              dupeinstalls[tgtfile] + " obsolted by " +
-                              skeldir)
+                        warnings.append(tgtfile + " from \x1b[1m" +
+                              dupeinstalls[tgtfile] + "\x1b[m obsolted by " +
+                              "\x1b[1m" + skeldir + "\x1b[m")
 
                         installlist = [entry for entry in installlist if
                                        entry[1] != tgtfile]
@@ -127,7 +127,7 @@ def main():
         print("")
 
     if warnings:
-        print("Warnings:\n")
+        print("\x1b[1;33m[Warnings]\x1b[m\n")
         for warning in warnings:
             print(warning)
 
