@@ -9,5 +9,5 @@
 
 urxvtc "$@" && exit 0
 urxvtd -q -o -f && urxvtc "$@" && exit 0
-urxvt "$@" && exit 0
-xterm "$@" && exit 0
+exec urxvt "$@"
+exec xterm "$@"
