@@ -1,0 +1,58 @@
+#!/bin/bash
+#
+# GNU document fetcher
+
+case $1 in
+gpl|gplv3)
+	curl 'https://www.gnu.org/licenses/gpl-3.0.txt';;
+gplv2)
+	curl 'https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt';;
+lgpl)
+	curl 'https://www.gnu.org/licenses/lgpl.txt';;
+agpl)
+	curl 'https://www.gnu.org/licenses/agpl.txt';;
+fdl)
+	curl 'https://www.gnu.org/licenses/fdl.txt';;
+copying)
+	echo "Copyright (C) `date +%Y` Michael Ensslin <michael@ensslin.cc>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details."
+	;;
+init)
+	$0 copying > COPYING
+	$0 gplv3 > LICENSE
+	;;
+hurd)
+	cat
+	;;
+rms)
+	echo "                       @@
+  FREE               @@@@@@ @
+    AS IN          @@@@     @@
+     FREEDOM !    @@@@ =   =  @@
+                 @@@ @ _   _   @@
+                 @@@ @(0)|(0)  @@
+                @@@@   ~ | ~   @@
+                @@@ @  (o1o)    @@
+               @@@    #######    @
+               @@@   ##{+++}##   @@
+              @@@@@ ## ##### ## @@@@
+              @@@@@#############@@@@
+             @@@@@@@###########@@@@@@
+            @@@@@@@#############@@@@@
+            @@@@@@@### ## ### ###@@@@
+             @ @  @              @  @
+               @                    @"
+	;;
+*)
+	echo "unknown command"
+	exit 1;;
+esac

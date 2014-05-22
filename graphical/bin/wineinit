@@ -1,0 +1,45 @@
+#!/bin/bash
+#
+# initializes a new wine folder
+
+function error() {
+	echo "error: " "$@"
+	exit 1
+}
+
+test -z "$1" && error "no game name specified"
+
+export LAUNCHER=~/games/$1
+export WINEPREFIX=~/.wine-$1
+GAMEDIR="$PREFIX/drive_c/$1"
+
+test -e "$LAUNCHER" && error "launcher already exists: $LAUNCHER"
+test -e "$WINEPREFIX" && error "wineprefix already exists: $WINEPREFIX"
+
+echo "#!/bin/bash
+GAMEEXE=<enter here>
+export WINEPREFIX=$WINEPREFIX
+cd \"\$WINEPREFIX/drive_c/$1\"
+if [[ \$1 == data ]]
+then
+	echo "launching shell"
+	\$SHELL
+elif [[ $1 == ]]
+then
+	wine \$GAMEEXE
+elif [[ $1 == launch ]]
+then
+	shift
+	wine \$GAMEEXE \"$@\"
+else
+	echo \"unknown command\"
+	exit 1
+fi
+" | tee "$LAUNCHER"
+chmod +x "$LAUNCHER"
+
+winecfg
+mkdir "$GAMEDIR"
+cd "$GAMEDIR"
+echo "launching shell... launcher is at $LAUNCHER"
+$SHELL

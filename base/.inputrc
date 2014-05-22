@@ -1,0 +1,7 @@
+# mic_e's .inputrc, version 2014052100
+# used by all readline-enabled programs (e.g. python, bash)
+
+# enable partial history search using the arrow keys
+
+"\e[A": history-search-backward
+"\e[B": history-search-forward

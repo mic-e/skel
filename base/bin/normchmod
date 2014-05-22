@@ -1,0 +1,17 @@
+#!/usr/bin/python3
+#
+# recursively chmods a directory;
+# sets directories to 755 and files to 644
+# why the fuck doesn't chmod support that natively??
+
+import os
+for (par, dirs, files) in os.walk('.'):
+    for d in dirs:
+        os.chmod(par + '/' + d, 0o755)
+    for f in files:
+        try:
+            fp = par + '/' + f
+            if os.path.isfile(fp) and not os.path.islink(fp):
+                os.chmod(fp, 0o644)
+        except:
+            print("could not set permissions for " + par + '/' + f)

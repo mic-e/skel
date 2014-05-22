@@ -1,0 +1,10 @@
+# mic_e's .sharedrc_graphical, version 2014052200
+# all graphical (on any graphical machine) valid, bash/zsh rc code
+# sourced from .sharedrc
+
+export BROWSER="firefox"
+
+alias npv="mpv --no-video"
+alias nemo="nemon"
+
+# vim: ft=sh

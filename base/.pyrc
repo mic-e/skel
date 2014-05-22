@@ -1,0 +1,22 @@
+def init():
+    import rlcompleter
+    import readline
+    import atexit
+    import os
+
+    history = os.path.expanduser("~/.py_history")
+
+    def save_history():
+        readline.write_history_file(history)
+
+    if os.path.exists(history):
+        readline.read_history_file(history)
+
+    atexit.register(save_history)
+
+    readline.parse_and_bind("tab: complete")
+
+init()
+del init
+
+# vim: ft=python

@@ -1,0 +1,83 @@
+#!/bin/bash
+#
+# cds to a new folder in /tmp, and inits a git repo
+# if 'cpp' is given as second arg, it also creates a
+# Makefile and test.cpp.
+
+DIRNAME="/tmp/$1"
+if [[ -e $DIRNAME ]]; then
+	let COUNTER=0
+	while [ -e "$DIRNAME$COUNTER" ]; do
+		let COUNTER=$COUNTER+1
+	done
+	DIRNAME="$DIRNAME$COUNTER"
+fi
+unset COUNTER
+mkdir "$DIRNAME"
+cd "$DIRNAME"
+
+gen_makefile() {
+echo "CXX=g++
+CXXFLAGS=-std=c++11 -Wall -Wextra -pedantic -g
+SRCFILE=test.cpp
+OBJ=test.o
+BIN=test
+
+all: \$(BIN)
+
+\$(OBJ): \$(SRCFILE) Makefile
+	\$(CXX) \$(CXXFLAGS) \$(SRCFILE) -c -o \$(OBJ)
+
+\$(BIN): \$(OBJ)
+	\$(CXX) \$(CXXFLAGS) \$(OBJ) -o \$(BIN)
+
+run: \$(BIN)
+	./\$(BIN)
+
+edit:
+	\$\$VISUAL \$(SRCFILE)
+
+clean:
+	rm \$(BIN)
+
+.PHONY: all clean run edit
+" > Makefile
+}
+
+gen_cppfile() {
+echo "#include <iostream>
+
+int main() {
+	return 0;
+}
+" > test.cpp
+}
+
+gen_gitignore() {
+echo "#auto-generated gitignore file
+.*.swp
+~*
+*.pyc
+*.pyo
+*.o
+__pycache__
+" > .gitignore
+}
+
+gitinit() {
+git init > /dev/null
+git add .
+git commit -m "initial commit" > /dev/null
+}
+
+if [[ $2 == cpp ]]; then
+	gen_makefile
+	gen_cppfile
+	gen_gitignore
+	gitinit
+elif [[ $2 == empty ]]; then
+	true
+else
+	gen_gitignore
+	gitinit
+fi

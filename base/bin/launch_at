@@ -1,0 +1,8 @@
+#!/bin/bash
+# accepts as arguments a directory and a command, and will run the
+# command in the directory, backgrounded.
+
+cd "$1"
+shift
+"$@" &
+disown $!

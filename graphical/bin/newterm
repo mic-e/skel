@@ -1,0 +1,13 @@
+#!/bin/bash
+# opens a new urxvt terminal
+# tries the following, in order:
+#
+# - launch an urxvtc client
+# - launch the urxvtd daemon, then launch a client
+# - launch the fallback non-client/server urxvt
+# - launch xterm
+
+urxvtc "$@" && exit 0
+urxvtd -q -o -f && urxvtc "$@" && exit 0
+urxvt "$@" && exit 0
+xterm "$@" && exit 0

@@ -1,0 +1,53 @@
+# mic_e's .sharedrc, version 2014052100
+# all globally (on any machine) valid, bash/zsh rc code
+# sourced at the top of .bashrc and .zshrc
+# for code valid on graphical machines, use .sharedrc_graphical
+# for code local to this machine, use .sharedrc_local
+
+# if not running interactively, don't do anything
+[[ $- != *i* ]] && return
+
+# helper functions
+function src() {
+	# source a scriptfile, if it exists
+	if [ -f "$1" ]; then
+		. "$1"
+	fi
+}
+
+function run_disowned() {
+	$@ &
+	disown $! 2>/dev/null || true
+}
+
+# environment variables
+# utils
+export VISUAL="vim"
+export EDITOR=$VISUAL
+export PAGER="less"
+export SHELL="/bin/zsh"
+export PYTHONSTARTUP=~/.pyrc
+export GPGKEY="86C3F486"
+
+# export LS_COLORS="di=01;36:ow=01;36;47:ln=01;33"
+eval $(dircolors -b ~/.dircolors)
+
+# usability
+alias ls=" ls --color=auto"
+alias tmp=". tmp"
+alias pymv="noglob command pymv"
+alias ntfsmount='mount -ouid=$UID,umask=022'
+
+# prompt
+PROMPTCOLOR_COMMAND="echo '32;1m'"
+
+# update PATH
+src ~/.pathrc
+
+# load graphical sharedrc
+src ~/.sharedrc_graphical
+
+# load system-local sharedrc
+src ~/.sharedrc_local
+
+# vim: ft=sh

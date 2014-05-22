@@ -1,0 +1,9 @@
+#!/bin/bash
+# wrapper for nemo that launches it without desktop... fu.
+# add an alias nemo=nemon to your .*rc for the perfect user experience.
+
+if [[ $# -eq 0 ]]; then
+	exec command nemo --no-desktop .
+else
+	exec command nemo --no-desktop "$@"
+fi

@@ -1,0 +1,3 @@
+#!/bin/bash
+# script to fetch a rfc by numerber
+curl "http://www.ietf.org/rfc/rfc$1.txt" 2>/dev/null

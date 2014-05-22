@@ -1,0 +1,18 @@
+#!/bin/bash
+# quick-n-dirty cpio wrapper that gives it tar-like usage
+# by mic_e, unknown date
+
+case $1 in
+	"c")
+		find "$2" -print0 | cpio --null -ovH newc
+		;;
+	"x")
+		cpio --no-absolute-filenames -idvH newc
+		;;
+	"t")
+		cpio -itH newc
+		;;
+	*)
+		echo "unknown mode" 1>&2
+		;;
+esac

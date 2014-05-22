@@ -1,0 +1,8 @@
+#!/usr/bin/python3
+from unum.units import *
+from math import *
+from pycalc.constants import *
+
+from util import interact
+
+interact(globals(), "pycalc, lol")

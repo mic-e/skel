@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+# tan script for my DKB tan list
+
+if [[ $UID -ne 0 ]]; then
+	sudo "$0" "$@"
+	exit $?
+fi
+
+if [[ ! $1 =~ ^[0-9]{3}$ ]]; then
+	echo "FATAL: three-digit tan id required."
+	exit 1
+fi
+
+touch ~/tan-used
+tanused=$(cat ~/tan-used | egrep "^${1}" | wc -l)
+if [[ $2 == "ref" ]]; then
+	if [[ $tanused -eq 0 ]]; then
+		echo "FATAL: tan has not been used yet."
+		exit 3
+	fi
+	refline="$(cat ~/tan-used | egrep ^${1})"
+	echo "$refline" | cut -f 2
+	echo "$refline" | cut -f 3
+	exit 0
+fi
+if [[ ! -n $2 ]]; then
+	echo "FATAL: no reference given."
+	exit 2
+fi
+if [[ $tanused -ne 0 ]]; then
+	echo "FATAL: tan already used."
+	exit 4
+fi
+cat ~/tan | egrep "^${1}" | cut -f 2 | tail -1
+echo -e "${1}\t$(date)\t${2}" >> ~/tan-used

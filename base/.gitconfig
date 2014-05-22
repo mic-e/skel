@@ -1,0 +1,8 @@
+[user]
+	name = Michael Ensslin
+	email = michael@ensslin.cc
+[push]
+	default = simple
+[filter "tabspace"]
+	smudge = unexpand --tabs=8 --first-only
+	clean = expand --tabs=8 --initial

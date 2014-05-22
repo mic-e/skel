@@ -1,0 +1,25 @@
+# mic_e's .pathrc, version 2014052200
+# sourced from .sharedrc and all sorts of .profile files
+# updates $PATH
+# tested to work with dash, bash and zsh.
+
+pathadd() {
+	# adds all arguments to $PATH, if the directories exist,
+	# and if they're not already in $PATH.
+
+	for p in $@
+	do
+		local tmp=":$PATH:"
+		if test -d "$p" && test "${tmp#*:$p:}" = "$tmp"
+		then
+			PATH="${PATH:+"$PATH:"}$p"
+		fi
+	done
+}
+
+pathadd ~/bin ~/games
+
+test -f ~/.pathrc_graphical && . ~/.pathrc_graphical
+test -f ~/.pathrc_local && . ~/.pathrc_local
+
+# vim: ft=sh

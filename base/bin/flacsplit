@@ -1,0 +1,29 @@
+#!/bin/bash
+# splits whole-CD flac files in single tracks, using the cue file for metadata
+# by mic_e, unknown date
+
+if ! [[ $1 ]]; then
+	echo "usage: $0 filename.flac"
+fi
+
+if ! [[ -f "$1" ]]; then
+	echo "error: file $1 does not exist."
+	exit
+fi
+
+if ! [[ -f "$1.cue" ]]; then
+	echo "error: file $1.cue does not exist."
+	exit
+fi
+
+if [[ `file "$1.cue"` =~ 8859 ]]; then
+	cat "$1.cue" | iconv -f ISO-8859-1 -t utf-8 > "$1.utf8.cue"
+else
+	cat "$1.cue" > "$1.utf8.cue"
+fi
+
+cuebreakpoints "$1.utf8.cue" | shnsplit -o flac "$1"
+cuetag.sh "$1.utf8.cue" split-track*
+for f in split-track*; do
+	mv $f "`metaflac --show-tag TRACKNUMBER --show-tag TITLE $f | awk -F= '{printf "%s\n", $2}' | tr '\n' '=' | awk -F= '{printf "%02u %s.flac", $1, $2}'`"
+done

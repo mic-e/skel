@@ -1,0 +1,60 @@
+#!/usr/bin/python3
+
+# script to play all mediafiles that match a list of regular expressions
+
+import os
+import sys
+import re
+import subprocess
+
+player = '/usr/bin/mpv'
+mediafiles = []
+
+simple = object()
+nonsimple = object()
+
+
+class Condition:
+    def __init__(self, s):
+        split = s.split('/')
+        if len(split) == 0:
+            raise Exception('empty condition: ' + s)
+        elif len(split) == 1:
+            self.type = simple
+            self.re = re.compile(split[0], flags=re.IGNORECASE)
+        elif len(split) == 2:
+            self.type = nonsimple
+            self.dirre = re.compile(split[0], flags=re.IGNORECASE)
+            self.filere = re.compile(split[1], flags=re.IGNORECASE)
+        else:
+            raise Exception('multiple slashes in condition: ' + s)
+
+    def check(self, dirname, filename):
+        if self.type == simple:
+            if not self.re.findall(dirname + '/' + filename):
+                return False
+        else:
+            if not self.dirre.findall(dirname):
+                return False
+            if not self.filere.findall(filename):
+                return False
+
+        return True
+
+conditions = [Condition(arg) for arg in sys.argv[1:]]
+
+
+def cleanunicode(s):
+    return s.encode('utf-8', errors='replace').decode('utf-8')
+
+for dirname, subdirs, files in os.walk('.'):
+    dirname = cleanunicode(dirname)
+    for filename in (cleanunicode(filename) for filename in files):
+        if True in (c.check(dirname, filename) for c in conditions):
+            mediafiles.append(dirname + '/' + filename)
+
+mediafiles = sorted(mediafiles)
+for mf in mediafiles:
+    print(mf)
+
+os.execl(player, *([player] + mediafiles))

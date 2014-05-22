@@ -1,0 +1,10 @@
+#!/usr/bin/python3
+from sys import argv
+from binascii import hexlify
+
+if len(argv) > 1:
+    bytec = int(argv[1])
+else:
+    bytec = 8
+
+print(hexlify(open('/dev/random', 'rb').read(bytec)).decode('utf-8'))

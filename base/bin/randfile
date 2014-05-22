@@ -1,0 +1,6 @@
+#!/bin/bash
+#
+# displays a random file or folder from the current directory
+x=1
+test "$1" && x="$1"
+ls | sort -R | head -$x

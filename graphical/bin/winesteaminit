@@ -1,0 +1,81 @@
+#!/bin/bash
+#
+# creates a new wine prefix for a steam game
+# pass the game name as $1
+
+function error() {
+	# prints an error message and aborts
+
+	echo "error: " "$@"
+	exit 1
+}
+
+function run() {
+	# runs a command, and prints it
+	echo "$@"
+	"$@"
+}
+
+test -z "$1" && error "no game name specified"
+
+export LAUNCHER=~/games/$1
+export WINEPREFIX=~/.wine-steam-$1
+STEAM_LAUNCHOPTS=-no-dwrite
+export STEAMDIR="$WINEPREFIX/drive_c/steam"
+
+test -e "$LAUNCHER" && error "launcher exists: $LAUNCHER"
+test -e "$WINEPREFIX" && error "wineprefix exists: $WINEPREFIX"
+
+#init the wineprefix
+WINESTEAMSKEL=~/.wine-steamskel
+STEAMEXELOCAL=~/.steam.exe
+STEAMEXEGLOBAL=/usr/share/steam.exe
+
+function installsteamfromexe() {
+	# creates a steam wineprefix from a steam.exe
+	# the steam.exe filename is passed in $1
+
+	winecfg
+	run mkdir -p "$STEAMDIR"
+	run cd "$STEAMDIR"
+	run cp "$1" Steam.exe
+	run wine Steam.exe $STEAM_LAUNCHOPTS
+}
+
+if [ -d "$SKEL" ]; then
+	echo "installing steam skeleton"
+	run cp -r "$SKEL" "$WINEPREFIX"
+elif [ -f "$STEAMEXE"]; then
+	installsteam "$STEAMEXELOCAL"
+elif [ -f "$STEAMEXEGLOBAL"]; then
+	installsteam "$STEAMEXEGLOBAL"
+else
+	error "none of $WINESTEAMSKEL, $STEAMEXELOCAL, $STEAMEXEGLOBAL exist"
+fi
+
+test -z "$BROWSER" && BROWSER=firefox
+$BROWSER http://steamdb.info/apps/
+read -p "enter the game's numeric steam ID: " STEAMID
+
+echo "launcher ($LAUNCHER):\n"
+
+echo "#!/bin/bash
+GAMEID=$STEAMID
+export WINEPREFIX=$WINEPREFIX
+cd \$WINEPREFIX/drive_c/steam
+if [ \"$1\" == ""]
+then
+	wine Steam.exe $STEAM_LAUNCHOPTS steam://rungameid/\$GAMEID
+elif [ \"$1\" == "steam" ]
+then
+	wine Steam.exe $STEAM_LAUNCHOPTS
+elif [ \"$1\" == "data" ]
+then
+	cd $STEAMDIR/SteamApps/common
+	echo 'spawning shell in steam data directory'
+	\$SHELL
+else
+	echo 'unknown command'
+	exit 1
+fi" | tee "$LAUNCHER"
+chmod +x "$LAUNCHER"

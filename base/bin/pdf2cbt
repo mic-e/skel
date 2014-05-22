@@ -1,0 +1,10 @@
+#!/bin/bash
+#
+# converts a PDF image collection to cbt
+
+TMP="/tmp/$0-$(date +%s)-$RANDOM$RANDOM"
+mkdir -p "$TMP"
+pdftohtml -nodrm "$1" "$TMP/tmp.html"
+rm $TMP/*.html
+tar -C $TMP . > "$1"
+rm -r "$TMP"

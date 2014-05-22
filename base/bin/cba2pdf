@@ -1,0 +1,11 @@
+#!/bin/bash
+#
+# converts a cb* file back to a PDF
+# you can use this to convert an image collection to PDF by first taring it,
+# then feeding it to this script.
+
+TMP="/tmp/$0-$(date +%s)-$RANDOM$RANDOM"
+7z e "$1" -o$TMP
+convert $TMP/* "$1.pdf"
+rm -r "$TMP"
+
