@@ -2,7 +2,7 @@
 import argparse
 import collections
 import os
-import stat
+
 
 class InstException(Exception):
     pass
@@ -90,8 +90,9 @@ def main():
 
                     if tgtfile in dupeinstalls:
                         warnings.append(tgtfile + " from \x1b[1m" +
-                              dupeinstalls[tgtfile] + "\x1b[m obsolted by " +
-                              "\x1b[1m" + skeldir + "\x1b[m")
+                                        dupeinstalls[tgtfile] + "\x1b[m " +
+                                        "obsolted by \x1b[1m" + skeldir +
+                                        "\x1b[m")
 
                         installlist = [entry for entry in installlist if
                                        entry[1] != tgtfile]
@@ -99,7 +100,6 @@ def main():
                     dupeinstalls[tgtfile] = skeldir
 
                     installlist.append((srcfile, tgtfile, exists, skeldir))
-
 
     if not installlist and not mkdirlist:
         raise InstException("Nothing to be installed")
@@ -160,9 +160,10 @@ def main():
             data = open(srcfile, "rb").read()
             open(tgtfile, "wb").write(data)
 
-            if os.stat(srcfile).st_mode & stat.S_IEXEC:
+            if os.stat(srcfile).st_mode & (64 + 8 + 1):
                 #set x flag
-                os.stat(tgtfile, os.stat(tgtfile).st_mode | stat.S_IEXEC)
+                print("chmod +x " + tgtfile)
+                os.chmod(tgtfile, os.stat(tgtfile).st_mode | (64 + 8 + 1))
 
 if __name__ == "__main__":
     try:
