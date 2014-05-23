@@ -16,8 +16,13 @@ function src() {
 }
 
 function run_disowned() {
-	$@ &
-	disown $! 2>/dev/null || true
+	"$@" & disown
+}
+
+function dos() {
+	# run_disowned_and_silenced
+
+	run_disowned "$@" 1>/dev/null 2>/dev/null
 }
 
 # environment variables
