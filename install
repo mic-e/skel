@@ -265,7 +265,7 @@ def main(cleanup):
             print(" " + shortname, end="")
             sys.stdout.flush()
             if not args.simulate:
-                tar.add(tgtfile)
+                tar.add(tgtfile, shortname)
 
         if not args.simulate:
             tar.close()
