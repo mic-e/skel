@@ -28,7 +28,7 @@ src /usr/share/doc/pkgfile/command-not-found.bash
 src /etc/bash_command_not_found
 
 # the prompt
-PROMPT_COMMAND='PROMPT_COL=`$PROMPTCOLOR_COMMAND`'
+PROMPT_COMMAND='PROMPT_COL="`eval $PROMPTCOLOR_COMMAND`"'
 if [[ $EUID -eq 0 ]]; then
 	PS1='\[\e[1;31m\]\u@\h \[\e[36m\]\w\[\e[m\] \[\e[37m\]($0) \[\e[${PROMPT_COL}\]#\[\e[m\] '
 else

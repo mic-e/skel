@@ -135,10 +135,8 @@ src /usr/share/doc/pkgfile/command-not-found.zsh
 src /etc/zsh_command_not_found
 
 # the prompt
-PROMPTCOLOR_COMMAND="echo '32;1m'"
-
 precmd() {
-	psvar[1]=`eval $PROMPTCOLOR_COMMAND`
+	psvar[1]="`eval $PROMPTCOLOR_COMMAND`"
 	vcs_info
 	psvar[2]="$vcs_info_msg_0_"
 	test $vcs_info_msg_1_ && psvar[4]="$vcs_info_msg_1_" || psvar[4]=`pwd`
