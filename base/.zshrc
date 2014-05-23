@@ -78,6 +78,10 @@ hosts=(
 )
 zstyle ':completion:*:hosts' hosts $hosts
 
+# define completion styles for own commands
+compdef run_disowned=command
+compdef dos=command
+
 # vcs info
 autoload -Uz vcs_info
 zstyle ':vcs_info:*' enable git svn hg
