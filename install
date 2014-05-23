@@ -139,17 +139,18 @@ def main():
             print(tgtfile.ljust(maxtgtfilelen) + " from \x1b[1m" +
                   skeldir.ljust(maxskeldirlen) + "\x1b[m " + warning)
 
-        if args.backup and not overwritten_tgtfiles:
-            warnings.append("nothing to backup")
-        elif not args.backup and overwritten_tgtfiles:
-            warnings.append("files will be overwritten, " +
-                            "but no backup will be performed")
-
         print("")
 
+    if args.backup and not overwritten_tgtfiles:
+        warnings.append("nothing to backup")
+        args.backup = False
+    elif not args.backup and overwritten_tgtfiles:
+        warnings.append("files will be overwritten, " +
+                        "but no backup will be performed!")
+
     if args.simulate:
-        warnings.append("simulation run:")
-        warnings.append("none of these actions will actually be performed.")
+        warnings.append("simulation run: none of these actions will actually "
+                        "be performed.")
         if args.backup and overwritten_tgtfiles:
             warnings.append("this includes your backup!")
 
@@ -160,14 +161,19 @@ def main():
 
         print("")
 
-    i = input("Continue [Y/n]? ")
-    if i not in {"Y", "y", ""}:
+        prompt = "Continue [y/N]? "
+        accepted_answers = {"Y", "y"}
+    else:
+        prompt = "Continue [Y/n]? "
+        accepted_answers = {"Y", "y", ""}
+
+    if input(prompt) not in accepted_answers:
         raise InstException("Aborted by user")
 
     print("")
 
     # create backup
-    if args.backup and overwritten_tgtfiles:
+    if args.backup:
         print("\x1b[1mtar cf\x1b[m " + args.backup + " \x1b[1m-C\x1b[m " +
               "\x1b[3m" + tgtdir + "\x1b[m", end="")
 
