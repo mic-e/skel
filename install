@@ -151,7 +151,7 @@ def main():
     if args.simulate:
         warnings.append("simulation run: none of these actions will actually "
                         "be performed.")
-        if args.backup and overwritten_tgtfiles:
+        if args.backup:
             warnings.append("this includes your backup!")
 
     if warnings:
