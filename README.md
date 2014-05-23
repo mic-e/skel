@@ -25,4 +25,8 @@ In addition, an installer script is provided.
  - There is no `--uninstall` command, but `--backup` will save the old config.
  - install will ask for confirmation, and allows `--simulate` that won't do any write access.
 
+You can view the example output of an `./install` invocation here:
+
+`curl http://pub.sft.mx/skelinstalltypescript`
+
 Feel free to fork this repo and use it for your own rc files.
