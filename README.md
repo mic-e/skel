@@ -10,14 +10,19 @@ There are multiple skeletons:
 | graphical  | graphical systems |
 | local-$X   | system $X         |
 
-In addition, an installer script is provided. The most relevant options are:
+In addition, an installer script is provided.
 
-`./install [--symlink | --hardlink] [--to-etc-skel] skeldir [skeldir ...]`
+    usage: install [-h]
+                   [--symlink | --hardlink | --remote USER@HOST | --target TARGETDIR]
+                   [--force-unchanged] [--backup FILE.tar] [--simulate]
+                   [--exclude REGEX]
+                   skeldir [skeldir ...]
 
  - All files from skeldir are installed in the specified mode (copy/symlink/hardlink).
- - All required folders are created, not linked.
- - skeldir __must__ not contain anything but plain files and directories.
- - There is no `uninstall` command, but `--backup` will save the old config.
- - install will ask for confirmation, and allows `--simulate` runs to make sure nothing breaks.
+ - Regardless, all folders are created, not linked.
+ - `--remote` allows installation to a remote ssh host.
+ - similarily, `--target` allows installation to a different folder.
+ - There is no `--uninstall` command, but `--backup` will save the old config.
+ - install will ask for confirmation, and allows `--simulate` that won't do any write access.
 
 Feel free to fork this repo and use it for your own rc files.
