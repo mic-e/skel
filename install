@@ -3,6 +3,7 @@ import argparse
 import collections
 import os
 import subprocess
+import sys
 import tempfile
 
 
@@ -52,6 +53,7 @@ def main(cleanup):
         # mount
         print("mounting remote \x1b[1m" + args.remote + "\x1b[m to " +
               "\x1b[3m" + tgtdir + "\x1b[m ... ", end="")
+        sys.stdout.flush()
         retval = subprocess.call(['sshfs', args.remote + ":", tgtdir])
         if retval != 0:
             raise InstException("could not mount remote " + args.remote)
@@ -252,6 +254,7 @@ def main(cleanup):
     if args.backup:
         print("\x1b[1mtar cf\x1b[m " + args.backup + " \x1b[1m-C\x1b[m " +
               "\x1b[3m" + shiny_tgtdir + "\x1b[m", end="")
+        sys.stdout.flush()
 
         if not args.simulate:
             import tarfile
@@ -260,6 +263,7 @@ def main(cleanup):
         for tgtfile in overwritten_tgtfiles:
             shortname = os.path.relpath(tgtfile, tgtdir)
             print(" " + shortname, end="")
+            sys.stdout.flush()
             if not args.simulate:
                 tar.add(tgtfile)
 
