@@ -16,7 +16,7 @@ function error() {
 }
 
 function cscreate() {
-	$PREFIX cryptsetup open --type plain "$DEV" "$CRYPT" --cipher twofish-xts-plain64 --key-size 512 --hash sha512
+	$PREFIX cryptsetup create "$CRYPT" "$DEV" --cipher twofish-xts-plain64 --key-size 512 --hash sha512
 }
 
 function csremove() {
