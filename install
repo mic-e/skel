@@ -197,7 +197,8 @@ def main(cleanup):
                 else:
                     warning = "\x1b[31;1m[File will be overwritten]\x1b[m"
 
-                overwritten_tgtfiles.append((tgtfile, srcfile))
+                shortname = os.path.relpath(tgtfile, tgtdir)
+                overwritten_tgtfiles.append((tgtfile, srcfile, shortname))
             else:
                 warning = ""
 
@@ -259,9 +260,8 @@ def main(cleanup):
 
         if overwritten_tgtfiles:
             def diff(filename):
-                for tgtfile, srcfile in overwritten_tgtfiles:
-                    shortname = os.path.relpath(tgtfile, tgtdir)
-                    if shortname == filename or tgtfile == filename:
+                for tgtfile, srcfile, shortname in overwritten_tgtfiles:
+                    if shortname == filename:
                         print("\x1b[1mdiff\x1b[m " + shiny_tgt(tgtfile) +
                               " " + srcfile)
 
@@ -284,6 +284,20 @@ def main(cleanup):
             diff.helptext = "Show diff for overwritten file FILE"
             diff.expectedargs = ["FILE"]
             diff.opt = "d"
+
+            def completer(args):
+                if len(args) == 0:
+                    prefix = ""
+                elif len(args) == 1:
+                    prefix = args[0]
+                else:
+                    return None
+
+                return ['d ' + shortname
+                        for _, _, shortname in overwritten_tgtfiles
+                        if shortname.startswith(prefix)]
+
+            diff.completions = completer
             options.append(diff)
 
         if len(options) > 2:
@@ -302,6 +316,34 @@ def main(cleanup):
         optstring = "".join((f.opt for f in options))
         optstring = optstring.replace(default, default.upper())
 
+        def find_completions(text):
+            text = [x for x in text.split(' ') if x]
+            if not text:
+                return [f.opt for f in options]
+
+            opt = text[0].lower()
+            args = text[1:]
+
+            for f in options:
+                if f.opt == opt and hasattr(f, 'completions'):
+                    return f.completions(args)
+
+            return None
+
+        class Completer:
+            def complete(self, text, state):
+                if state == 0:
+                    self.matches = find_completions(text)
+                try:
+                    return self.matches[state]
+                except IndexError:
+                    return None
+
+        import readline
+        readline.set_completer(Completer().complete)
+        readline.parse_and_bind("tab: complete")
+        readline.set_completer_delims('')
+
         print("")
         try:
             userinput = input("Continue [" + optstring + "]? ")
@@ -311,6 +353,8 @@ def main(cleanup):
         except KeyboardInterrupt:
             userinput = 'n'
             print("")
+
+        readline.set_completer(None)
 
         userinput = [x for x in userinput.split(' ') if x]
         if not userinput:
@@ -354,8 +398,7 @@ def main(cleanup):
             import tarfile
             tar = tarfile.open(args.backup, 'w')
 
-        for tgtfile, _ in overwritten_tgtfiles:
-            shortname = os.path.relpath(tgtfile, tgtdir)
+        for tgtfile, _, shortname in overwritten_tgtfiles:
             print(" " + shortname, end="")
             sys.stdout.flush()
             if not args.simulate:
