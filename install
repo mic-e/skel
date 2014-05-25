@@ -292,7 +292,15 @@ def main(cleanup):
         optstring = optstring.replace(default, default.upper())
 
         print("")
-        userinput = input("Continue [" + optstring + "]? ")
+        try:
+            userinput = input("Continue [" + optstring + "]? ")
+        except EOFError:
+            userinput = 'n'
+            print("^D")
+        except KeyboardInterrupt:
+            userinput = 'n'
+            print("")
+
         userinput = [x for x in userinput.split(' ') if x]
         if not userinput:
             userinput = [default]
