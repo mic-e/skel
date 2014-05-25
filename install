@@ -264,7 +264,18 @@ def main(cleanup):
                     if shortname == filename or tgtfile == filename:
                         print("\x1b[1mdiff\x1b[m " + shiny_tgt(tgtfile) +
                               " " + srcfile)
-                        subprocess.call(["diff", tgtfile, srcfile])
+
+                        # try to use colordiff, which has fancier output
+                        try:
+                            subprocess.call(["colordiff", "-u", "--",
+                                             tgtfile, srcfile])
+
+                            return False
+                        except:
+                            pass
+
+                        subprocess.call(["diff", "-u", "--",
+                                         tgtfile, srcfile])
                         return False
 
                 print("Not an overwritten file: " + filename)
