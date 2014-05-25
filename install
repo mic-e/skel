@@ -190,14 +190,14 @@ def main(cleanup):
         maxtgtfilelen, _ = maxlen(installlist, key=lambda e: shiny_tgt(e[1]))
         maxskeldirlen, _ = maxlen(installlist, key=lambda e: e[3])
 
-        for _, tgtfile, exists, skeldir in installlist:
+        for srcfile, tgtfile, exists, skeldir in installlist:
             if exists:
                 if args.backup:
                     warning = "\x1b[33m[File will be backed up]\x1b[m"
                 else:
                     warning = "\x1b[31;1m[File will be overwritten]\x1b[m"
 
-                overwritten_tgtfiles.append(tgtfile)
+                overwritten_tgtfiles.append((tgtfile, srcfile))
             else:
                 warning = ""
 
@@ -236,17 +236,92 @@ def main(cleanup):
         print("\x1b[1;33m[Warnings]\x1b[m\n")
         for warning in warnings:
             print("- " + warning)
+        prompt_default = "n"
+    else:
+        prompt_default = "y"
+
+    def prompt(default):
+        options = []
+
+        def yes():
+            return True
+        yes.helptext = "Continue"
+        yes.expectedargs = []
+        yes.opt = "y"
+        options.append(yes)
+
+        def no():
+            raise InstException("Aborted by user")
+        no.helptext = "Abort"
+        no.expectedargs = []
+        no.opt = "n"
+        options.append(no)
+
+        if overwritten_tgtfiles:
+            def diff(filename):
+                for tgtfile, srcfile in overwritten_tgtfiles:
+                    shortname = os.path.relpath(tgtfile, tgtdir)
+                    if shortname == filename or tgtfile == filename:
+                        print("\x1b[1mdiff\x1b[m " + shiny_tgt(tgtfile) +
+                              " " + srcfile)
+                        subprocess.call(["diff", tgtfile, srcfile])
+                        return False
+
+                print("Not an overwritten file: " + filename)
+                return False
+
+            diff.helptext = "Show diff for overwritten file FILE"
+            diff.expectedargs = ["FILE"]
+            diff.opt = "d"
+            options.append(diff)
+
+        if len(options) > 2:
+            def help():
+                for f in options:
+                    print(f.opt, end="")
+                    if f.expectedargs:
+                        print(" " + ", ".join(f.expectedargs), end="")
+                    print(": " + f.helptext)
+                return False
+            help.helptext = "Show this help text"
+            help.expectedargs = []
+            help.opt = "?"
+            options.append(help)
+
+        optstring = "".join((f.opt for f in options))
+        optstring = optstring.replace(default, default.upper())
 
         print("")
+        userinput = input("Continue [" + optstring + "]? ")
+        userinput = [x for x in userinput.split(' ') if x]
+        if not userinput:
+            userinput = [default]
 
-        prompt = "Continue [y/N]? "
-        accepted_answers = {"Y", "y"}
-    else:
-        prompt = "Continue [Y/n]? "
-        accepted_answers = {"Y", "y", ""}
+        opt = userinput[0].lower()
+        args = userinput[1:]
 
-    if input(prompt) not in accepted_answers:
-        raise InstException("Aborted by user")
+        for f in options:
+            if opt == f.opt:
+                if len(args) != len(f.expectedargs):
+                    if not f.expectedargs:
+                        print("'" + opt + "' expects no arguments")
+                        return False
+                    elif len(f.expectedargs) == 1:
+                        print("'" + opt + "' expects the argument " +
+                              f.expectedargs[0])
+                        return False
+                    else:
+                        print("'" + opt + "' expects the arguments " +
+                              ", ".join(f.expectedargs))
+                        return False
+
+                return f(*args)
+
+        print("Unknown input: " + opt)
+        return False
+
+    while not prompt(prompt_default):
+        prompt_default = 'n'
 
     print("")
 
@@ -260,7 +335,7 @@ def main(cleanup):
             import tarfile
             tar = tarfile.open(args.backup, 'w')
 
-        for tgtfile in overwritten_tgtfiles:
+        for tgtfile, _ in overwritten_tgtfiles:
             shortname = os.path.relpath(tgtfile, tgtdir)
             print(" " + shortname, end="")
             sys.stdout.flush()
