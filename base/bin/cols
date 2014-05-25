@@ -1,0 +1,63 @@
+#!/usr/bin/env python3
+
+reset = "\x1b[m"
+hexchars = "0123456789abcdef"
+full = "\u2588"
+
+class Color:
+    def __init__(self, code):
+        if not 0 <= code < 256:
+            raise Exception("color code not in range: " + str(code))
+        self.code = code
+
+        self.fg = "\x1b[38;5;" + str(self.code) + "m"
+        self.bg = "\x1b[48;5;" + str(self.code) + "m"
+        self.str = str(self.code).rjust(3, '0')
+        self.hex = hexchars[self.code // 16] + hexchars[self.code % 16]
+        self.longp = self.fg + self.str + full + reset
+        self.short = self.fg + full + reset
+
+for i in range(256):
+    print(Color(i).longp, end=" ")
+    if i % 16 == 15:
+            print("")
+
+print("\n   " + " ".join(hexchars))
+for i in range(16):
+    print(hexchars[i], end=" ")
+    for j in range(16):
+        print(Color(i * 16 + j).short * 2, end="")
+    print(" " + hexchars[i])
+print("   " + " ".join(hexchars) + "\n")
+
+for i in range(16):
+    print(" " + Color(i).hex, end="")
+print("")
+for i in range(16):
+    print(Color(i).short * 3, end="")
+print("\n")
+for i in range(232, 256):
+    print(" " + Color(i).hex, end="")
+print("")
+for i in range(232, 256):
+    print(Color(i).short * 3, end="")
+print("\n")
+
+def printxyz(code = 'rgb'):
+    lookup = {'b': 6 ** 0, 'g': 6 ** 1, 'r': 6 ** 2}
+    xv = lookup[code[0]]
+    yv = lookup[code[1]]
+    zv = lookup[code[2]]
+
+    for x in range(6):
+        for z in range(6):
+            for y in range(6):
+                col = Color(16 + x * xv + y * yv + z * zv)
+                print(col.fg + col.hex + reset, end="")
+            print(" ", end="")
+        print("")
+    print("")
+
+printxyz("rgb")
+printxyz("rbg")
+printxyz("bgr")
