@@ -20,7 +20,7 @@ function run_disowned() {
 }
 
 function dos() {
-	# run_disowned_and_silenced
+	# run_disowned and silenced
 
 	run_disowned "$@" 1>/dev/null 2>/dev/null
 }
@@ -42,6 +42,8 @@ alias ls=" ls --color=auto"
 alias tmp=". tmp"
 alias pymv="noglob command pymv"
 alias dumbmount='mount -ouid=$UID,umask=022'
+alias tohex="baseconv 16"
+alias fromhex="baseconv 10 -f 16"
 
 # prompt
 PROMPTCOLOR_COMMAND="echo '32;1m'"
