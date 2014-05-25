@@ -1,0 +1,175 @@
+#!/usr/bin/env python3
+import argparse
+import sys
+import os
+import math
+
+p = argparse.ArgumentParser()
+p.add_argument("tgt", type=int, help="target base")
+p.add_argument("-f", "--src", type=int, default=10, help="src base")
+p.add_argument("-p", "--period", action='store_true',
+               help="if available, print period instead of decimal expansion")
+p.add_argument("val", type=str, nargs='*', help="list of values")
+args = p.parse_args()
+
+digits = "0123456789abcdefghijklmnopqrstuvwxyz"
+
+def str_base(val, base):
+    ds = []
+    while val or not ds:
+        ds.append(digits[val % base])
+        val //= base
+    return "".join(reversed(ds))
+
+def str_base_frac(frac, divider, base, maxdigits):
+    states = []
+    statelookup = {}
+    started = False
+
+    while True:
+        frac %= divider
+        frac *= base
+
+        if frac >= divider:
+            started = True
+        if started:
+            maxdigits -= 1
+
+        if maxdigits <= 0 or frac == 0:
+            period = []
+            break
+        if frac in statelookup:
+            # period starts at statelookup[frac]
+            period = states[statelookup[frac]:]
+            states = states[:statelookup[frac]]
+            break
+
+        states.append(frac)
+        statelookup[frac] = len(states) - 1
+
+    unique = ''.join([digits[s // divider] for s in states])
+    period = ''.join([digits[s // divider] for s in period])
+
+    return unique, period
+
+def conv(val):
+    src = args.src
+
+    # 0x/0o/0b/0d prefixes could specify a src base
+    prefixed = False
+    lookup = {'0x': 16, '0o': 8, '0b': 2, '0d': 10}
+    for k, v in lookup.items():
+        if val.startswith(k):
+            val = val[len(k):]
+            src = v
+            prefixed = True
+            break
+    # _{%u} could also specify a src base
+    if val.count('_') == 1 and not prefixed:
+        val, src = val.split('_')
+        src = int(src)
+
+    if val[:1] == '-':
+        negative = True
+        val=val[1:]
+    else:
+        negative = False
+
+    # for bases < 15 (where 'e' is free), a 'e{%d}' suffix
+    # means '* base**{%d}'
+    force_frac = False
+    factor = 1
+    divider = 1
+    if src < 15 and val.count('e') == 1:
+        val, exp = val.split('e')
+        exp = int(exp)
+        if exp < 0:
+            divider *= src ** (-exp)
+        elif exp > 0:
+            factor *= src ** exp
+
+    # fun fact: dots exist, too!
+    if val.count('.') == 1:
+        val, frac = val.split('.')
+        divider *= src ** len(frac)
+        val = val + frac
+        force_frac = True
+
+    # calculate the integer and fractional parts
+    val = val.lstrip('0')
+    if val == '':
+        val = '0'
+    input_significant_digits = len(val)
+    val = int(val, src) * factor
+    frac, val = val % divider, val // divider
+
+    # convert the int part to string
+    val_is_zero = not val
+    val = str_base(val, args.tgt)
+    if frac or force_frac:
+        # calculate how many digits of the fractional to print
+        # (enough to meet the information content of the input)
+        # convert the fractional part to string
+        output_digits_required = 3 + int(input_significant_digits *
+                                         math.log(src, args.tgt))
+        if not val_is_zero:
+            output_digits_required -= len(val)
+
+        if output_digits_required > 0:
+            unique, period = str_base_frac(frac, divider, args.tgt,
+                                           output_digits_required + 20)
+            val += '.'
+
+            if period and args.period:
+                # print the fractional as 'unique part[repeating part]'
+                if period:
+                    val += unique + '(' + period + ')'
+                else:
+                    val += unique
+            else:
+                if val_is_zero:
+                    zeroes = len(unique) - len(unique.lstrip('0'))
+                    val = val + '0' * zeroes
+                    unique = unique.lstrip('0')
+                if len(unique) >= output_digits_required:
+                    val += unique[:output_digits_required]
+                else:
+                    if not period:
+                        period = '0'
+                    val += unique
+                    output_digits_required -= len(unique)
+                    val += period * (output_digits_required // len(period))
+                    val += period[:output_digits_required % len(period)]
+
+    if negative:
+        return '-' + val
+    else:
+        return val
+
+def read():
+    if os.isatty(0):
+        import readline
+        while True:
+            val = input('> ')
+            if not val:
+                return
+            yield val
+    else:
+        for val in sys.stdin:
+            if val == '\n' or not val:
+                return
+            yield val
+
+if args.val:
+    for val in args.val:
+        print(conv(val))
+else:
+    try:
+        for val in read():
+            if val == "exit":
+                break
+            print(conv(val))
+    except EOFError:
+        print("exit")
+    except KeyboardInterrupt:
+        print("exit")
