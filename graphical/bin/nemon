@@ -3,7 +3,7 @@
 # add an alias nemo=nemon to your .*rc for the perfect user experience.
 
 if [[ $# -eq 0 ]]; then
-	exec command nemo --no-desktop .
+	exec nemo --no-desktop .
 else
-	exec command nemo --no-desktop "$@"
+	exec nemo --no-desktop "$@"
 fi
