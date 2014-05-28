@@ -33,8 +33,8 @@ def parse_args():
 
     import argparse
     p = argparse.ArgumentParser()
-    p.add_argument('--opus', action='store_true',
-                        help='convert WAV, MP3, FLAC to OGG/Opus')
+    p.add_argument('--opus', type=int,
+                   help='convert WAV, MP3, FLAC to OGG/Opus (specify kbit/s)')
     p.add_argument('srcs', nargs='+', metavar='FILE')
     p.add_argument('dstdir', metavar='TARGET')
 
@@ -112,7 +112,7 @@ class CPFile(CCCP):
                                 "' with non-directory")
 
     def cccp(self):
-        print("cp " + self.src + " " + self.dst)
+        print("cp '" + self.src + "' '" + self.dst + "'")
         srcf = open(self.src, 'rb')
         dstf = open(self.dst, 'wb')
 
@@ -144,7 +144,7 @@ class CPDir(CCCP):
                             "' with directory '" + src + "'")
 
         self.subcccps = []
-        for entry in os.listdir(self.src):
+        for entry in sorted(os.listdir(self.src)):
             self.subcccps.append(CCCP.factory(self.src, self.dst, entry))
 
         dsts = set()
@@ -159,7 +159,7 @@ class CPDir(CCCP):
 
     def cccp(self):
         if not os.path.exists(self.dst):
-            print("mkdir " + self.dst)
+            print("mkdir '" + self.dst + "'")
             os.mkdir(self.dst)
 
         for subcccp in self.subcccps:
@@ -174,7 +174,7 @@ class OpusConvert(CCCP):
             raise CCCP.UnfittingFile()
 
         barename, ext = os.path.splitext(name)
-        ext = ext.lower()
+        ext = ext.lower()[1:]
 
         if ext not in {'mp3', 'flac', 'wav'}:
             raise CCCP.UnfittingFile()
@@ -183,14 +183,19 @@ class OpusConvert(CCCP):
         self.dst = dstdir + '/' + barename + '.ogg'
 
     def cccp(self):
-        print("opusconv from " + self.src + " to " + self.dst)
+        import subprocess
+        print("opusenc '" + self.src + "' '" + self.dst + "'")
 
         if self.ext == 'mp3':
-            raise NotImplementedError() # TODO
-        elif self.ext == 'flac':
-            raise NotImplementedError() # TODO
-        elif self.ext == 'wav':
-            raise NotImplementedError() # TODO
+            decoder = subprocess.Popen(['mpg123', '-w', '-', self.src],
+                                        stdout=subprocess.PIPE)
+            encoder = subprocess.Popen(['opusenc', '--bitrate', self.quality,
+                                        '--', '-', self.dst],
+                                        stdin=decoder.stdout)
+            encoder.communicate()
+        elif self.ext == 'flac' or self.ext == 'wav':
+            subprocess.call(['opusenc', '--bitrate', self.quality,
+                             '--', self.src, self.dst])
         else:
             raise CCCPError('OpusConvert: wrong file ext on ' + self.src)
 
@@ -199,6 +204,7 @@ def main():
     args = parse_args()
 
     if args.opus:
+        OpusConvert.quality = str(args.opus)
         CCCP.active_cccps.append(OpusConvert)
     CCCP.active_cccps.append(CPDir)
     CCCP.active_cccps.append(CPFile)
