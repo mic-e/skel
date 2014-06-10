@@ -236,6 +236,7 @@ STICKY_OTHER_WRITABLE 48;5;235;38;5;139
 .mp3                  38;5;63
 .oga                  38;5;63
 .ogg                  38;5;63
+.mka                  38;5;63
 .opus                 38;5;63
 # lossless
 .flac                 38;5;74
