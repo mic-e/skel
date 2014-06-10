@@ -45,33 +45,38 @@ function installsteamfromexe() {
 if [ -d "$SKEL" ]; then
 	echo "installing steam skeleton"
 	run cp -r "$SKEL" "$WINEPREFIX"
-elif [ -f "$STEAMEXE"]; then
-	installsteam "$STEAMEXELOCAL"
-elif [ -f "$STEAMEXEGLOBAL"]; then
-	installsteam "$STEAMEXEGLOBAL"
+elif [ -f "$STEAMEXELOCAL" ]; then
+	installsteamfromexe "$STEAMEXELOCAL"
+elif [ -f "$STEAMEXEGLOBAL" ]; then
+	installsteamfromexe "$STEAMEXEGLOBAL"
 else
 	error "none of $WINESTEAMSKEL, $STEAMEXELOCAL, $STEAMEXEGLOBAL exist"
 fi
 
 test -z "$BROWSER" && BROWSER=firefox
-$BROWSER http://steamdb.info/apps/
+$BROWSER "http://steamdb.info/search/?a=app&q=$1"
 read -p "enter the game's numeric steam ID: " STEAMID
 
-echo "launcher ($LAUNCHER):\n"
+echo -e "\x1b[32mLauncher ($LAUNCHER):\x1b[m\n"
 
 echo "#!/bin/bash
 GAMEID=$STEAMID
 export WINEPREFIX=$WINEPREFIX
+STEAM_LAUNCHOPTS=\"\$STEAM_LAUNCHOPTS\"
 cd \$WINEPREFIX/drive_c/steam
-if [ \"$1\" == ""]
+if test -z \"\$1\"
 then
-	wine Steam.exe $STEAM_LAUNCHOPTS steam://rungameid/\$GAMEID
-elif [ \"$1\" == "steam" ]
+	wine Steam.exe \$STEAM_LAUNCHOPTS -applaunch \$GAMEID
+elif test \"\$1\" == cmd
 then
-	wine Steam.exe $STEAM_LAUNCHOPTS
-elif [ \"$1\" == "data" ]
+	shift
+	wine Steam.exe \$STEAM_LAUNCHOPTS -applaunch \$GAMEID \"\$@\"
+elif test \"\$1\" == steam
 then
-	cd $STEAMDIR/SteamApps/common
+	wine Steam.exe \$STEAM_LAUNCHOPTS
+elif test \"\$1\" == data
+then
+	cd SteamApps/common
 	echo 'spawning shell in steam data directory'
 	\$SHELL
 else
