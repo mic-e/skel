@@ -31,7 +31,8 @@ function umnt() {
 	$PREFIX umount "/dev/mapper/$CRYPT"
 }
 
-if [[ $1 == "-u" ]]; then
+if [ "$1" == -u ]; then
+	shift
 	test $# -ne 1 && usage
 	MOUNTPOINT="$1"
 	# find the crypt device name
@@ -40,7 +41,8 @@ if [[ $1 == "-u" ]]; then
 	then
 		error "bad mountpoint: $MOUNTPOINT"
 	fi
-	if [[ $devs =~ ^/dev/mapper/[a-zA-Z0-9]+$ ]]; then
+	echo "$devs"
+	if [[ $devs =~ ^/dev/[a-zA-Z0-9-]+$ ]]; then
 		CRYPT="${BASH_REMATCH[1]}"
 	else
 		error "not a proper crypt device: $devs"
