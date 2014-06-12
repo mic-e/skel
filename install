@@ -301,6 +301,17 @@ def main(cleanup):
             options.append(diff)
 
         if len(options) > 2:
+            def shell():
+                shell = os.environ.get('SHELL', '/bin/sh')
+                print("Spawning an interactive shell... press ^D to return.")
+                subprocess.call([shell])
+                return False
+
+            shell.helptext = "Spawn an interactive shell"
+            shell.expectedargs = []
+            shell.opt = "s"
+            options.append(shell)
+
             def help():
                 for f in options:
                     print(f.opt, end="")
