@@ -25,6 +25,10 @@ function dos() {
 	run_disowned "$@" 1>/dev/null 2>/dev/null
 }
 
+function fls() {
+	find "$@" -print0 | xargs -0 ls -ld --color=auto --
+}
+
 # environment variables
 # utils
 export VISUAL="vim"
