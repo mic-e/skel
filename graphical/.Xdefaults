@@ -42,3 +42,9 @@ URxvt.urgentOnBell:      true
 
 ! new window
 URxvt.keysym.C-0:        perl:newwindow:open
+
+! xterm
+XTerm*foreground:        rgb:aa/aa/aa
+XTerm*background:        rgb:00/00/00
+XTerm*faceName:          Liberation Mono:size=11:antialias=true
+
