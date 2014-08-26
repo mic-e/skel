@@ -48,7 +48,16 @@ alias pymv="noglob command pymv"
 alias dumbmount='mount -ouid=$UID,umask=022'
 alias tohex="baseconv 16"
 alias fromhex="baseconv -f 16 10"
+alias python3="python3 -q"
 alias p3="python3"
+alias gdb="gdb -q"
+alias bc="bc -q"
+alias octave="octave -q"
+alias objdump="objdump -M intel-mnemonic -C"
+alias nm="nm -C"
+alias xseltoclip="xclip -o | xclip -i -selection clipboard"
+alias xcliptosel="xclip -selection clipboard -o | xclip -i"
+alias fgi="find | grep -i"
 
 # prompt
 PROMPTCOLOR_COMMAND="echo '32;1m'"
