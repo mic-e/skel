@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+#
+# Case-insensitive recursive directory merger
+#
+# (c) 2014 by Michael Ensslin <michael@ensslin.cc>
+
+import os
+
+
+class Error(Exception):
+    pass
+
+
+def comparefiles(src, tgt):
+    if os.path.getsize(src) != os.path.getsize(tgt):
+        return False
+
+    sf = open(src, 'rb')
+    tf = open(tgt, 'rb')
+
+    while True:
+        sbuf = sf.read(8388608)
+        tbuf = tf.read(8388608)
+        if sbuf != tbuf:
+            return False
+        if not sbuf:
+            return True
+
+
+def cpf(src, tgt):
+    """
+    copies a file, no questions asked.
+    """
+    if os.path.exists(tgt):
+        if comparefiles(src, tgt):
+            return
+        else:
+            print("warning: overwriting file '" + tgt + "'")
+
+    sf = open(src, 'rb')
+    tf = open(tgt, 'wb')
+
+    # copy 8MB chunks
+    while tf.write(sf.read(8388608)):
+        pass
+
+    sf.close()
+    tf.close()
+
+    # preserve x flag
+    if os.stat(src).st_mode & (64 + 8 + 1):
+        os.chmod(tgt, os.stat(tgt).st_mode | (64 + 8 + 1))
+
+
+def cpdir(src, tgt):
+    """
+    copies the contents of src to tgt, ignoring case when replacing/merging
+    files/subdirs.
+    """
+    tgtents = {tgtent.lower(): tgtent for tgtent in os.listdir(tgt)}
+    for srcent in os.listdir(src):
+        if srcent.lower() in tgtents:
+            tgtent = tgtents[srcent.lower()]
+        else:
+            tgtent = srcent
+
+        srcf = src + '/' + srcent
+        tgtf = tgt + '/' + tgtent
+
+        if os.path.isdir(srcf):
+            if os.path.exists(tgtf):
+                if os.path.isdir(tgtf):
+                    cpdir(srcf, tgtf)
+                else:
+                    raise Error("cannot overwrite non-directory '" + tgtf +
+                                "' with directory '" + srcf + "'")
+            else:
+                os.mkdir(tgtf)
+                cpdir(srcf, tgtf)
+        else:
+            if os.path.exists(tgtf) and os.path.isdir(tgtf):
+                raise Error("cannot overwrite directory '" + tgtf +
+                            "' with non-directory")
+            cpf(srcf, tgtf)
+
+
+def main():
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument('src', metavar='SOURCE', help="the content of this " +
+                   "directory will be copied to tgt")
+    p.add_argument('tgt', metavar='TARGET')
+
+    args = p.parse_args()
+
+    if not os.path.isdir(args.src):
+        raise Error("source `" + args.src + "` is not a directory")
+    if not os.path.isdir(args.tgt):
+        raise Error("target `" + args.tgt + "` is not a directory")
+
+    cpdir(args.src, args.tgt)
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except Error as e:
+        print(e)
