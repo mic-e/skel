@@ -1,0 +1,192 @@
+#!/usr/bin/env python3
+import math
+inf = float("+inf")
+
+
+def roundtomultiple(number, multiple):
+    return multiple * (1 + (number - 1) // multiple)
+
+
+def finddiffplaces(files, chunksize=65536):
+    """
+    yields all positions where the files differ
+
+    @param files
+        list of File object (seek to desired pos)
+    @param chunksize
+        internal read() chunk size
+    """
+    pos = 0
+    while True:
+        chunks = [f.read(chunksize) for f in files]
+        size = min(len(c) for c in chunks)
+
+        if any(c != chunks[0] for c in chunks):
+            for x in range(size):
+                if any(c[x] != chunks[0][x] for c in chunks):
+                    yield pos + x
+
+        if size < chunksize:
+            break
+        else:
+            pos += chunksize
+
+
+def finddiffranges(files, rangetolerance=128):
+    """
+    yields ranges where binary files differ
+    @param files
+        list of File objects (seek to desired pos)
+    @param rangetolerance
+        if there are no errors for this many bytes, count the next as a new
+        range.
+    """
+    firstplace = None
+    lastplace = None
+
+    for place in finddiffplaces(files):
+        if not firstplace:
+            firstplace = lastplace = place
+        elif place > lastplace + rangetolerance:
+            yield firstplace, lastplace
+            firstplace = lastplace = place
+        else:
+            lastplace = place
+
+    if firstplace:
+        yield firstplace, lastplace + 1
+
+
+def ttywidth(fd=1):
+    import os
+    import struct
+    import fcntl
+    import termios
+
+    if os.isatty(fd):
+        rqstruct = struct.pack('HHHH', 0, 0, 0, 0)
+        resstruct = fcntl.ioctl(fd, termios.TIOCGWINSZ, rqstruct)
+        _, w, _, _ = struct.unpack('HHHH', resstruct)
+        return w
+    else:
+        return inf
+
+
+import sys
+if len(sys.argv) < 3:
+    print("usage: %s fileA fileB [...]")
+    exit(1)
+
+filenames = sys.argv[1:]
+files = [open(name, 'rb') for name in filenames]
+maxsize = max(f.seek(0, 2) for f in files)
+for f in files:
+    f.seek(0)
+posstringlen = 2 * (1 + int(math.log2(max(maxsize, 1))) // 8)
+posstringlen = max(4, posstringlen)
+
+ttyw = ttywidth()
+if ttyw == inf:
+    ttyw = 120
+
+widthperfile = (ttyw - 2 - posstringlen) // len(files) - 2
+bytesperline = widthperfile // 3
+widthperfile = bytesperline * 3 + 1
+if widthperfile <= 0:
+    print("terminal not wide enough!")
+    exit(1)
+
+print("\u250c" + posstringlen * "\u2500", end="")
+for f in filenames:
+    print("\u252c" + widthperfile * "\u2500", end="")
+print("\u2510\n\u2502" + "pos".center(posstringlen), end="")
+for fn in filenames:
+    if widthperfile < len(fn):
+        fn = fn[:widthperfile]
+    print("\u2502" + fn.center(widthperfile), end="")
+print("\u2502\n", end="")
+
+firstrange = True
+for start, end in finddiffranges([open(name, 'rb') for name in filenames]):
+    print("\u251c" + "\u2500" * posstringlen, end="")
+    for f in files:
+        print("\u253c" + "\u2500" * 2 * bytesperline, end="")
+        if firstrange:
+            print("\u252c" + "\u2500" * bytesperline, end="")
+        else:
+            print("\u253c" + "\u2500" * bytesperline, end="")
+    print("\u2524\n", end="")
+
+    extensionsize = roundtomultiple(100, bytesperline)
+    extendedstart = max(start - extensionsize, 0)
+    extendedlen = extensionsize + end - extendedstart
+    extendedlen = roundtomultiple(extendedlen, bytesperline)
+    extendedend = extendedstart + extendedlen
+
+    chunks = []
+    for f in files:
+        f.seek(extendedstart)
+        chunks.append(f.read(extendedlen))
+
+    line = None
+    lines = []
+    byteofline = inf
+    posinchunk = 0
+    for x in range(max(len(c) for c in chunks)):
+        if byteofline >= bytesperline:
+            # start next line of output
+            if line:
+                lines.append(line)
+            byteofline = 0
+            line = [hex(extendedstart + x)[2:].rjust(posstringlen)]
+            for f in files:
+                line.append("")
+                line.append("")
+
+            byteofline = 0
+
+        hexvals = []
+        asciivals = []
+        for c in chunks:
+            v = c[x:x + 1]
+            if not v:
+                hexvals.append("  ")
+                asciivals.append(" ")
+            else:
+                v = v[0]
+                hexvals.append('{:02x}'.format(v))
+                if v >= 0x20 and v < 0x7f:
+                    asciivals.append(chr(v))
+                else:
+                    asciivals.append('\x1b[1m.\x1b[m')
+
+        if len(set(hexvals) | {"  "}) > 2:
+            # there are multiple byte values
+            hexvals = ['\x1b[32m' + v + '\x1b[m' for v in hexvals]
+            asciivals = ['\x1b[32m' + v + '\x1b[m' for v in asciivals]
+
+        for i in range(len(files)):
+            line[1 + 2 * i] += hexvals[i]
+            line[2 + 2 * i] += asciivals[i]
+
+        byteofline += 1
+
+    if line and byteofline:
+        if byteofline < bytesperline:
+            for i in range(len(files)):
+                line[1 + 2 * i] += "  " * (bytesperline - byteofline)
+                line[2 + 2 * i] += " " * (bytesperline - byteofline)
+
+        lines.append(line)
+
+    for line in lines:
+        line = [""] + line + [""]
+        print("\u2502".join(line))
+
+    firstrange = False
+
+print("\u2514" + "\u2500" * posstringlen, end="")
+for f in files:
+    print("\u2534" + "\u2500" * 2 * bytesperline, end="")
+    print("\u2534" + "\u2500" * bytesperline, end="")
+print("\u2518\n", end="")
