@@ -22,7 +22,7 @@ def finddiffplaces(files, chunksize=65536):
         chunks = [f.read(chunksize) for f in files]
 
         # remove EOF'd files
-        files = [f for idx, f in enumerate(files) if len(chunks[idx]) == 0]
+        files = [f for idx, f in enumerate(files) if chunks[idx]]
 
         # performance optimization: avoid comparing identical chunks in-depth.
         if len(set(chunks)) > 1:
@@ -221,10 +221,12 @@ def merge(filenames, target, diffranges):
     def writeslice(start, end, f=None):
         if f is None:
             f = possiblefiles(end)[0]
+        files[f].seek(start, 0)
+
+        print("writing %s[0x%x:0x%x] to outfile" % (filenames[f], start, end))
 
         size = end - start
         while size > 0:
-            files[f].seek(start)
             data = files[f].read(min(size, 8*1024*1024))
             if not data:
                 raise Exception("File too small")
