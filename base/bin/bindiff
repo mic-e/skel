@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import math
+import itertools
 inf = float("+inf")
 
 
@@ -17,19 +18,30 @@ def finddiffplaces(files, chunksize=65536):
         internal read() chunk size
     """
     pos = 0
-    while True:
+    while len(files) > 1:
         chunks = [f.read(chunksize) for f in files]
-        size = min(len(c) for c in chunks)
 
-        if any(c != chunks[0] for c in chunks):
-            for x in range(size):
-                if any(c[x] != chunks[0][x] for c in chunks):
-                    yield pos + x
+        # remove EOF'd files
+        files = [f for idx, f in enumerate(files) if len(chunks[idx]) == 0]
 
-        if size < chunksize:
-            break
-        else:
-            pos += chunksize
+        # performance optimization: avoid comparing identical chunks in-depth.
+        if len(set(chunks)) > 1:
+            # iterate over all bytes of the chunk
+            # the 'manual' loop is required because we don't want to increment
+            # on exception.
+            x = 0
+            while x < chunksize:
+                try:
+                    # compare byte x of the chunk (byte pos + x of the files)
+                    if len(set(c[x] for c in chunks)) > 1:
+                        yield pos + x
+                    x += 1
+                except IndexError:
+                    # we've reached the last byte of one of the files.
+                    # remove the associated chunk.
+                    chunks = [c for c in chunks if len(c) > x]
+
+        pos += chunksize
 
 
 def finddiffranges(files, rangetolerance=128):
@@ -45,19 +57,144 @@ def finddiffranges(files, rangetolerance=128):
     lastplace = None
 
     for place in finddiffplaces(files):
-        if not firstplace:
+        if firstplace is None:
             firstplace = lastplace = place
         elif place > lastplace + rangetolerance:
-            yield firstplace, lastplace
+            yield firstplace, lastplace + 1
             firstplace = lastplace = place
         else:
             lastplace = place
 
-    if firstplace:
+    if firstplace is not None:
         yield firstplace, lastplace + 1
 
 
-def ttywidth(fd=1):
+def getdifflines(files, diffranges, bytesperline, poscolwidth,
+                 extensionsize=100):
+
+    for start, end in diffranges:
+        # yield a separator
+        yield None
+
+        extensionsize = roundtomultiple(extensionsize, bytesperline)
+        extendedstart = max(start - extensionsize, 0)
+        extendedlen = extensionsize + end - extendedstart
+        extendedlen = roundtomultiple(extendedlen, bytesperline)
+        extendedend = extendedstart + extendedlen
+
+        chunks = []
+        for f in files:
+            f.seek(extendedstart)
+            chunks.append(f.read(extendedlen))
+
+        line = None
+        byteofline = inf
+        posinchunk = 0
+        for x in range(max(len(c) for c in chunks)):
+            if byteofline >= bytesperline:
+                # start next line of output
+                if line:
+                    yield line
+                byteofline = 0
+
+                line = [hex(extendedstart + x)[2:].rjust(poscolwidth)]
+                for f in files:
+                    line.append("")
+                    line.append("")
+
+                byteofline = 0
+
+            hexvals = []
+            asciivals = []
+            for c in chunks:
+                v = c[x:x + 1]
+                if not v:
+                    hexvals.append("  ")
+                    asciivals.append(" ")
+                else:
+                    v = v[0]
+                    hexvals.append('{:02x}'.format(v))
+                    if v >= 0x20 and v < 0x7f:
+                        asciivals.append(chr(v))
+                    else:
+                        asciivals.append('\x1b[1m.\x1b[m')
+
+            if len(set(hexvals) | {"  "}) > 2:
+                # this byte differs between files; mark it with color.
+                hexvals = ['\x1b[32m' + v + '\x1b[m' for v in hexvals]
+                asciivals = ['\x1b[32m' + v + '\x1b[m' for v in asciivals]
+
+            for i in range(len(files)):
+                line[1 + 2 * i] += hexvals[i]
+                line[2 + 2 * i] += asciivals[i]
+
+            byteofline += 1
+
+        if line and byteofline:
+            if byteofline < bytesperline:
+                for i in range(len(files)):
+                    line[1 + 2 * i] += "  " * (bytesperline - byteofline)
+                    line[2 + 2 * i] += " " * (bytesperline - byteofline)
+
+            yield line
+
+
+def printdiffrangetable(filenames, diffranges):
+    files = [open(name, 'rb') for name in filenames]
+    filesizes = [f.seek(0, 2) for f in files]
+    for f in files:
+        f.seek(0)
+
+    # how wide must the first column be? (needs to fit the hex filesize)
+    poscolwidth = max(4, 2 * (1 + int(math.log2(max(filesizes + [1]))) // 8))
+    # how many bytes per line can we store in the file column?
+    # minus 2 for the borders; the latter minus 2 for the column borders.
+    # // 3 because for each byte, we need 3 chars (2 hex, 1 literal)
+    bytesperline = ((ttywidth() - 2 - poscolwidth) // len(files) - 2) // 3
+    if bytesperline <= 0:
+        print("terminal not wide enough!")
+        exit(1)
+    # how wide will each file column be?
+    filecolwidth = bytesperline * 3 + 1
+
+    # print table header, with file names
+    print("\u250c" + poscolwidth * "\u2500", end="")
+    for f in filenames:
+        print("\u252c" + filecolwidth * "\u2500", end="")
+    print("\u2510\n\u2502" + "pos".center(poscolwidth), end="")
+    for fn in filenames:
+        if filecolwidth < len(fn):
+            fn = fn[:filecolwidth]
+        print("\u2502" + fn.center(filecolwidth), end="")
+    print("\u2502\n", end="")
+
+    # print all ranges
+    firstrange = True
+    for line in getdifflines(files, diffranges, bytesperline, poscolwidth):
+        if line:
+            # print the line
+            print("\u2502".join([""] + line + [""]))
+        else:
+            # print a range separator
+            print("\u251c" + "\u2500" * poscolwidth, end="")
+            for f in files:
+                print("\u253c" + "\u2500" * 2 * bytesperline, end="")
+                if firstrange:
+                    print("\u252c" + "\u2500" * bytesperline, end="")
+                else:
+                    print("\u253c" + "\u2500" * bytesperline, end="")
+            print("\u2524\n", end="")
+            firstrange = False
+
+    # print table footer
+    print("\u2514" + "\u2500" * poscolwidth, end="")
+    for f in files:
+        print("\u2534" + "\u2500" * 2 * bytesperline, end="")
+        print("\u2534" + "\u2500" * bytesperline, end="")
+    print("\u2518\n", end="")
+
+
+def ttywidth(fd=1, default=120):
     import os
     import struct
     import fcntl
@@ -69,124 +206,97 @@ def ttywidth(fd=1):
         _, w, _, _ = struct.unpack('HHHH', resstruct)
         return w
     else:
-        return inf
+        return default
 
 
-import sys
-if len(sys.argv) < 3:
-    print("usage: %s fileA fileB [...]")
-    exit(1)
+def merge(filenames, target, diffranges):
+    files = [open(fn, 'rb') for fn in filenames]
+    filesizes = [f.seek(0, 2) for f in files]
+    pos = 0
+    outfile = open(target, 'wb')
 
-filenames = sys.argv[1:]
-files = [open(name, 'rb') for name in filenames]
-maxsize = max(f.seek(0, 2) for f in files)
-for f in files:
-    f.seek(0)
-posstringlen = 2 * (1 + int(math.log2(max(maxsize, 1))) // 8)
-posstringlen = max(4, posstringlen)
+    def possiblefiles(size):
+        return [i for i in range(len(files)) if filesizes[i] >= size]
 
-ttyw = ttywidth()
-if ttyw == inf:
-    ttyw = 120
+    def writeslice(start, end, f=None):
+        if f is None:
+            f = possiblefiles(end)[0]
 
-widthperfile = (ttyw - 2 - posstringlen) // len(files) - 2
-bytesperline = widthperfile // 3
-widthperfile = bytesperline * 3 + 1
-if widthperfile <= 0:
-    print("terminal not wide enough!")
-    exit(1)
+        size = end - start
+        while size > 0:
+            files[f].seek(start)
+            data = files[f].read(min(size, 8*1024*1024))
+            if not data:
+                raise Exception("File too small")
+            size -= len(data)
+            outfile.write(data)
 
-print("\u250c" + posstringlen * "\u2500", end="")
-for f in filenames:
-    print("\u252c" + widthperfile * "\u2500", end="")
-print("\u2510\n\u2502" + "pos".center(posstringlen), end="")
-for fn in filenames:
-    if widthperfile < len(fn):
-        fn = fn[:widthperfile]
-    print("\u2502" + fn.center(widthperfile), end="")
-print("\u2502\n", end="")
+    for start, end in diffranges:
+        size = end - start
+        if pos < start:
+            # there is an undisputed section in [pos:start]
+            writeslice(pos, start)
+            pos = start
 
-firstrange = True
-for start, end in finddiffranges([open(name, 'rb') for name in filenames]):
-    print("\u251c" + "\u2500" * posstringlen, end="")
-    for f in files:
-        print("\u253c" + "\u2500" * 2 * bytesperline, end="")
-        if firstrange:
-            print("\u252c" + "\u2500" * bytesperline, end="")
-        else:
-            print("\u253c" + "\u2500" * bytesperline, end="")
-    print("\u2524\n", end="")
+        # ask user to make a choice
+        sources = possiblefiles(end)
+        print("disputed segment [0x%x:0x%x] (%d bytes). possible sources:"
+              % (start, end, size))
+        for i in sources:
+            print("[%d] %s" % (i, filenames[i]))
+        while True:
+            inp = input("> ")
+            try:
+                inp = int(inp)
+                if inp not in sources:
+                    raise Exception("not a valid source")
+                break
+            except Exception as e:
+                print(e.args[0])
 
-    extensionsize = roundtomultiple(100, bytesperline)
-    extendedstart = max(start - extensionsize, 0)
-    extendedlen = extensionsize + end - extendedstart
-    extendedlen = roundtomultiple(extendedlen, bytesperline)
-    extendedend = extendedstart + extendedlen
+        writeslice(start, end, inp)
+        pos = end
 
-    chunks = []
-    for f in files:
-        f.seek(extendedstart)
-        chunks.append(f.read(extendedlen))
+    # finally, write the last, undisputed section
+    writeslice(end, max(filesizes))
 
-    line = None
-    lines = []
-    byteofline = inf
-    posinchunk = 0
-    for x in range(max(len(c) for c in chunks)):
-        if byteofline >= bytesperline:
-            # start next line of output
-            if line:
-                lines.append(line)
-            byteofline = 0
-            line = [hex(extendedstart + x)[2:].rjust(posstringlen)]
-            for f in files:
-                line.append("")
-                line.append("")
 
-            byteofline = 0
+def main():
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument('files', metavar='FILE', nargs='+',
+                    help="files to compare")
+    p.add_argument('--merge-to',
+                    help="do an interactive merge, writing the result here.")
 
-        hexvals = []
-        asciivals = []
-        for c in chunks:
-            v = c[x:x + 1]
-            if not v:
-                hexvals.append("  ")
-                asciivals.append(" ")
-            else:
-                v = v[0]
-                hexvals.append('{:02x}'.format(v))
-                if v >= 0x20 and v < 0x7f:
-                    asciivals.append(chr(v))
-                else:
-                    asciivals.append('\x1b[1m.\x1b[m')
+    args = p.parse_args()
+    if len(args.files) < 1:
+        print("you need to specify multiple files for comparision.")
+        exit(1)
 
-        if len(set(hexvals) | {"  "}) > 2:
-            # there are multiple byte values
-            hexvals = ['\x1b[32m' + v + '\x1b[m' for v in hexvals]
-            asciivals = ['\x1b[32m' + v + '\x1b[m' for v in asciivals]
+    diffranges = finddiffranges([open(name, 'rb') for name in args.files])
+    # we don't want to do any lazy execution
+    diffranges, backup = itertools.tee(diffranges)
 
-        for i in range(len(files)):
-            line[1 + 2 * i] += hexvals[i]
-            line[2 + 2 * i] += asciivals[i]
+    diffrangelist = []
+    try:
+        diffrangelist.append(next(backup))
+    except StopIteration:
+        print("files are identical")
+        exit(0)
 
-        byteofline += 1
+    # print the state
+    printdiffrangetable(args.files, diffranges)
 
-    if line and byteofline:
-        if byteofline < bytesperline:
-            for i in range(len(files)):
-                line[1 + 2 * i] += "  " * (bytesperline - byteofline)
-                line[2 + 2 * i] += " " * (bytesperline - byteofline)
+    if not args.merge_to:
+        return
 
-        lines.append(line)
+    # start the happy merging
+    for rng in backup:
+        diffrangelist.append(rng)
 
-    for line in lines:
-        line = [""] + line + [""]
-        print("\u2502".join(line))
+    merge(args.files, args.merge_to, diffrangelist)
 
-    firstrange = False
 
-print("\u2514" + "\u2500" * posstringlen, end="")
-for f in files:
-    print("\u2534" + "\u2500" * 2 * bytesperline, end="")
-    print("\u2534" + "\u2500" * bytesperline, end="")
-print("\u2518\n", end="")
+if __name__ == "__main__":
+    main()
