@@ -17,7 +17,7 @@ pathadd() {
 	done
 }
 
-pathadd ~/bin ~/games
+pathadd /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ~/bin ~/games
 
 test -f ~/.pathrc_graphical && . ~/.pathrc_graphical
 test -f ~/.pathrc_local && . ~/.pathrc_local

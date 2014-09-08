@@ -6,9 +6,6 @@
 # password helper script: never log anything!
 alias pass=' pass'
 
-# vary promptcolor depending on sysload, battery state
-PROMPTCOLOR_COMMAND=promptcolor
-
 # notebook usability aliases
 alias suspend='sudo pm-suspend 1>/dev/null 2>/dev/null'
 alias lock='i3lock -i /usr/share/mic-conf/lockscreen.png 1>/dev/null 2>/dev/null'

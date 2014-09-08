@@ -28,12 +28,14 @@ src /usr/share/doc/pkgfile/command-not-found.bash
 src /etc/bash_command_not_found
 
 # the prompt
-PROMPT_COMMAND='PROMPT_COL="`eval $PROMPTCOLOR_COMMAND`"'
+PROMPT_COMMAND='rv=$?; test $rv -gt 0 && echo -e "\x1b[35mfail: $rv\x1b[m"'
 if [[ $EUID -eq 0 ]]; then
-	PS1='\[\e[1;31m\]\u@\h \[\e[36m\]\w\[\e[m\] \[\e[37m\]($0) \[\e[${PROMPT_COL}\]#\[\e[m\] '
+	PROMPTCHAR='#'
 else
-	PS1='\[\e[0;32m\]\u@\h \[\e[36m\]\w\[\e[m\] \[\e[37m\]($0) \[\e[${PROMPT_COL}\]\$\[\e[m\] '
+	PROMPTCHAR='$'
 fi
+#    <   user@host   > <        cwd       > <   (bash)   > <          prompt char          >
+PS1='\[\e[0;32m\]\u@\h \[\e[36m\]\w\[\e[m\] \[\e[37m\]($0) \[\e[1;32m\]${PROMPTCHAR}\[\e[m\] '
 
 # load graphical bashrc
 src ~/.bashrc_graphical

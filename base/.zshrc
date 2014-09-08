@@ -84,17 +84,14 @@ compdef dos=command
 
 # vcs info
 autoload -Uz vcs_info
-zstyle ':vcs_info:*' enable git svn hg
-zstyle ':vcs_info:*' max-exports 3
+zstyle ':vcs_info:*'            enable git svn hg
+zstyle ':vcs_info:*'            max-exports 3
 
-zstyle ':vcs_info:*'            formats         "[%r/%b]"       "%s:%r/%b" "37"
-zstyle ':vcs_info:*'            actionformats   "[%a %r/%b]"    "%s:%r/%b" "1;37"
+zstyle ':vcs_info:*'            formats           7 "[%s:%b]"
+zstyle ':vcs_info:*'            actionformats     7 "[%a %s:%b]"
 
-zstyle ':vcs_info:git:*'        formats         "[%r/%b]"       "%s:%r/%b" "38;5;208"
-zstyle ':vcs_info:git:*'        actionformats   "[%a %r/%b]"    "%s:%r/%b" "1;38;5;208"
-
-zstyle ':vcs_info:svn:*'        formats         "[%r/%b]"       "%s:%r/%b" "38;5;212"
-zstyle ':vcs_info:svn:*'        actionformats   "[%a %r/%b]"    "%s:%r/%b" "1;38;5;212"
+zstyle ':vcs_info:git:*'        formats         208 "[%b]"
+zstyle ':vcs_info:git:*'        actionformats   208 "[%a %b]"
 
 # key bindings: emacs style
 bindkey -e
@@ -140,30 +137,20 @@ src /etc/zsh_command_not_found
 
 # the prompt
 precmd() {
-	psvar[1]="`eval $PROMPTCOLOR_COMMAND`"
+	echo -en '\x07' # bell
 	vcs_info
-	psvar[2]="$vcs_info_msg_0_"
-	test $vcs_info_msg_1_ && psvar[4]="$vcs_info_msg_1_" || psvar[4]=`pwd`
-	psvar[3]="$vcs_info_msg_2_"
+	psvar[1]="$vcs_info_msg_0_"
+	psvar[2]="$vcs_info_msg_1_"
 }
 
-case $TERM in
-	*xvt*|xterm*|gnome*|xfce*)
-		PROMPT='%{[0;3%(!.1;1.2)m%}%n@%m %{[36m%}%~ %{[%v%}%(!.# .$)%{[m%} %{]2;%4v%}'
-		RPROMPT='%(1j.%{[32m%}[%j]%{[m%}.)%(0?..%{[1;31;48;5;15m%}[%?]%{[m%})%{[%3vm%}%2v%{[m%}'
-	;;
-	*)
-		PROMPT='%{[0;3%(!.1;1.2)m%}%n@%m %{[36m%}%~ %{[%v%}%(!.# .$)%{[m%} '
-		RPROMPT='%(1j.%{[32m%}[%j]%{[m%}.)%(0?..%{[1;31;47m%}[%?]%{[m%})%2v'
-	;;
-esac
+#       <        exit value         ><user@host>< cwd >< prompt (# or $) >
+PROMPT='%b%(0?..%5Ffail: %?%f'$'\n'')%2F%n@%m%f %6F%~%f %B%2F%(!.#.$)%f%b '
+#        <   bg jobs  ><  vcs branch   >
+RPROMPT='%(1j.%2F[%j].)%(V.%F{%v}%2v%f.)'
 
 # load graphical zshrc
 src ~/.zshrc_graphical
 # load local zshrc
 src ~/.zshrc_local
-
-PERL_MB_OPT="--install_base \"/home/mic/perl5\""; export PERL_MB_OPT;
-PERL_MM_OPT="INSTALL_BASE=/home/mic/perl5"; export PERL_MM_OPT;
 
 # vim ft=zsh

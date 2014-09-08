@@ -59,9 +59,6 @@ alias xseltoclip="xclip -o | xclip -i -selection clipboard"
 alias xcliptosel="xclip -selection clipboard -o | xclip -i"
 alias fgi="find | grep -i"
 
-# prompt
-PROMPTCOLOR_COMMAND="echo '32;1m'"
-
 # update PATH
 src ~/.pathrc
 
