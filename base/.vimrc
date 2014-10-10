@@ -8,6 +8,7 @@ set softtabstop=8
 set shiftwidth=8
 set shiftround
 set whichwrap+=<,>,h,l,[,]
+set ignorecase smartcase
 
 highlight evilws ctermbg=red
 " space indent /^\t*\zs \+/
