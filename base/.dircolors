@@ -104,6 +104,8 @@ STICKY_OTHER_WRITABLE 48;5;235;38;5;139
 *INSTALL              38;5;221
 *Makefile             38;5;172
 *MANIFEST             38;5;172
+*CMakeLists.txt       38;5;172
+.cmake                38;5;172
 .am                   38;5;172
 .in                   38;5;172
 .svn                  38;5;162
