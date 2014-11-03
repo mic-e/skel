@@ -3,6 +3,10 @@ def init():
     import readline
     import atexit
     import os
+    import sys
+
+    sys.ps1 = '\x01\x1b[36m\x02>>>\x01\x1b[m\x02 '
+    sys.ps2 = '\x01\x1b[36m\x02...\x01\x1b[m\x02 '
 
     history = os.path.expanduser("~/.py_history")
 
