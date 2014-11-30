@@ -10,7 +10,7 @@
 
 # general shell options
 setopt extended_glob longlistjobs completeinword hashlistall bash_rematch
-unsetopt autocd beep notify
+unsetopt autocd beep notify nomatch
 
 # command history
 HISTFILE=~/.zsh_history
