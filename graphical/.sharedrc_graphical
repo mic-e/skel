@@ -7,5 +7,6 @@ export BROWSER="firefox"
 alias newterm='run_disowned command newterm'
 alias npv="mpv --no-video"
 alias nemo="nemon"
+alias paint="pinta"
 
 # vim: ft=sh
