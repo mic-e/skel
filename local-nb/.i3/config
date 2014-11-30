@@ -137,6 +137,8 @@ mode "resize" {
 
 bindsym $mod+r mode "resize"
 
+bindsym $mod+Pause exec --no-startup-id lock suspend 1>/dev/null 2>/dev/null
+
 exec --no-startup-id pulseaudio -D
 exec --no-startup-id nm-applet 2>&1 > /tmp/nm-applet-out-1000
 
