@@ -34,7 +34,8 @@ hurd)
 	cat
 	;;
 rms)
-	echo "                       @@
+	echo "\
+                       @@
   FREE               @@@@@@ @
     AS IN          @@@@     @@
      FREEDOM !    @@@@ =   =  @@
