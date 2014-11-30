@@ -14,6 +14,11 @@ set ignorecase smartcase
 "  n... :  where to save the viminfo files
 set viminfo='10,\"100,:20,%,n~/.viminfo
 
+" type w!! to sudo-write
+cmap w!! exec 'w !sudo dd of=' . shellescape(expand('%'))
+" type d? to show changes that would be written on write
+cmap d?  exec 'w !git diff --no-index -- ' . shellescape(expand('%')) . ' -'
+
 function! ResCur()
 	if line("'\"") <= line("$")
 		normal! g`"
