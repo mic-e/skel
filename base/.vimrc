@@ -2,22 +2,9 @@ syntax on
 " set autoindent
 set encoding=utf8
 set background=dark
-set noexpandtab
-set tabstop=8
-set softtabstop=8
-set shiftwidth=8
 set shiftround
 set whichwrap+=<,>,h,l,[,]
 set ignorecase smartcase
-
-highlight evilws ctermbg=red
-" space indent /^\t*\zs \+/
-" stray tab    /[^\t]\zs\t\+/
-" trailing ws  /\s\+\%#\@<!$/
-" tab          /\t/
-2match evilws /^\t*\zs \+\|[^\t]\zs\t\+\|\s\+\%#\@<!$/
-" trailing ws does not highlight when typing there; redraw when leaving insert mode
-autocmd InsertLeave * redraw!
 
 " Tell vim to remember certain things when we exit
 "  '10  :  marks will be remembered for up to 10 previously edited files
@@ -39,18 +26,45 @@ augroup resCur
 	autocmd BufWinEnter * call ResCur()
 augroup END
 
-" python-specific
-au FileType python setlocal expandtab
-au FileType python setlocal tabstop=8
-au FileType python setlocal shiftwidth=4
-au FileType python setlocal softtabstop=4
-" highlight tabs and trailing whitespaces
-au FileType python :2match evilws /\t\|\s\+\%#\@<!$/
+" whitespace code
 
-" perl-specific
-au FileType perl setlocal expandtab
-au FileType perl setlocal tabstop=8
-au FileType perl setlocal shiftwidth=4
-au FileType perl setlocal softtabstop=4
-" highlight tabs and trailing whitespaces
-au FileType perl :2match evilws /\t\|\s\+\%#\@<!$/
+highlight evilws ctermbg=red
+" make sure that evilws is re-drawn when leaving insert mode
+autocmd InsertLeave * redraw!
+
+function! WSS(x)
+	setlocal expandtab
+
+	let &l:tabstop     = 8
+	let &l:shiftwidth  = a:x
+	let &l:softtabstop = a:x
+
+	" highlight forbidden whitespaces:
+	" tab          /\t/
+	" trailing ws  /\s\+\%#\@<!$/
+	:2match evilws /\t\|\s\+\%#\@<!$/
+endfunction
+
+function! WST(x)
+	setlocal noexpandtab
+
+	let &l:tabstop     = a:x
+	let &l:shiftwidth  = a:x
+	let &l:softtabstop = a:x
+
+	" highlight forbidden whitespaces:
+	" space indent /^\t*\zs \+/
+	" stray tab    /[^\t]\zs\t\+/
+	" trailing ws  /\s\+\%#\@<!$/
+	:2match evilws /^\t*\zs \+\|[^\t]\zs\t\+\|\s\+\%#\@<!$/
+endfunction
+
+" default: 8-width tabs
+call WST(8)
+" filetypes where whitespaces are preferred
+autocmd FileType python,perl,pyrex call WSS(4)
+
+" short commands for manual usage
+cmap ws2 call WSS(2)
+cmap ws4 call WSS(4)
+cmap wst call WST(8)
