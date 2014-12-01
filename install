@@ -142,16 +142,22 @@ def main(cleanup):
                         installlist = [entry for entry in installlist if
                                        entry[1] != tgtfile]
 
+                    unchanged = False
                     if os.path.exists(tgtfile):
                         if os.path.isdir(tgtfile):
                             raise InstException("Existing dir " + tgtfile +
                                                 " prevents file installation")
 
-                        if not args.force_unchanged:
-                            # check whether the file differs
-                            tgtdata = open(tgtfile, 'rb').read()
-                            srcdata = open(srcfile, 'rb').read()
-                            if tgtdata == srcdata:
+                        # check whether the file differs
+                        tgtdata = open(tgtfile, 'rb').read()
+                        srcdata = open(srcfile, 'rb').read()
+                        if tgtdata == srcdata:
+                            # file unchanged
+                            if args.force_unchanged:
+                                # overwrite it anyways
+                                unchanged = True
+                            else:
+                                # skip it
                                 continue
 
                         exists = True
@@ -160,7 +166,7 @@ def main(cleanup):
 
                     dupeinstalls[tgtfile] = skeldir
 
-                    installlist.append((srcfile, tgtfile, exists, skeldir))
+                    installlist.append((srcfile, tgtfile, exists, skeldir, unchanged))
 
     if not installlist and not mkdirlist:
         raise InstException("Nothing to be installed")
@@ -192,12 +198,15 @@ def main(cleanup):
         maxtgtfilelen, _ = maxlen(installlist, key=lambda e: shiny_tgt(e[1]))
         maxskeldirlen, _ = maxlen(installlist, key=lambda e: e[3])
 
-        for srcfile, tgtfile, exists, skeldir in installlist:
+        for srcfile, tgtfile, exists, skeldir, unchanged in installlist:
             if exists:
                 if args.backup:
                     warning = "\x1b[33m[File will be backed up]\x1b[m"
                 else:
                     warning = "\x1b[31;1m[File will be overwritten]\x1b[m"
+
+                if unchanged:
+                    warning += " (unchanged)"
 
                 shortname = os.path.relpath(tgtfile, tgtdir)
                 overwritten_tgtfiles.append((tgtfile, srcfile, shortname))
@@ -430,7 +439,7 @@ def main(cleanup):
             os.mkdir(tgtfile)
 
     # install files
-    for srcfile, tgtfile, exists, _ in installlist:
+    for srcfile, tgtfile, exists, _, _ in installlist:
         if exists:
             print("\x1b[1mrm\x1b[m " + shiny_tgt(tgtfile))
             if not args.simulate:
