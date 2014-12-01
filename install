@@ -435,6 +435,7 @@ def main(cleanup):
                 os.unlink(tgtfile)
 
         if args.symlink:
+            srcfile = os.path.relpath(srcfile, os.path.dirname(tgtfile))
             print("\x1b[1mln -s\x1b[m " + srcfile + " " + shiny_tgt(tgtfile))
             if not args.simulate:
                 os.symlink(srcfile, tgtfile)
