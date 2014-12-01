@@ -131,6 +131,17 @@ def main(cleanup):
 
                 else:
                     # it's a file, so we need to copy it
+                    if tgtfile in dupeinstalls:
+                        # the file is already being installed from a different
+                        # folder; undo that.
+                        warnings.append(shiny_tgt(tgtfile) + " from \x1b[1m" +
+                                        dupeinstalls[tgtfile] + "\x1b[m " +
+                                        "obsolted by \x1b[1m" + skeldir +
+                                        "\x1b[m")
+
+                        installlist = [entry for entry in installlist if
+                                       entry[1] != tgtfile]
+
                     if os.path.exists(tgtfile):
                         if os.path.isdir(tgtfile):
                             raise InstException("Existing dir " + tgtfile +
@@ -146,15 +157,6 @@ def main(cleanup):
                         exists = True
                     else:
                         exists = False
-
-                    if tgtfile in dupeinstalls:
-                        warnings.append(shiny_tgt(tgtfile) + " from \x1b[1m" +
-                                        dupeinstalls[tgtfile] + "\x1b[m " +
-                                        "obsolted by \x1b[1m" + skeldir +
-                                        "\x1b[m")
-
-                        installlist = [entry for entry in installlist if
-                                       entry[1] != tgtfile]
 
                     dupeinstalls[tgtfile] = skeldir
 
