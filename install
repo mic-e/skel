@@ -166,7 +166,8 @@ def main(cleanup):
 
                     dupeinstalls[tgtfile] = skeldir
 
-                    installlist.append((srcfile, tgtfile, exists, skeldir, unchanged))
+                    installlist.append((srcfile, tgtfile,
+                                        exists, skeldir, unchanged))
 
     if not installlist and not mkdirlist:
         raise InstException("Nothing to be installed")
