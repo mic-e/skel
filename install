@@ -233,7 +233,7 @@ def main(cleanup):
         warnings.append("simulation run: none of these actions will actually "
                         "be performed.")
         if args.backup:
-            warnings.append("this includes your backup!")
+            warnings.append("simulation run: will not actually create backup")
 
     if warnings:
         print("\x1b[1;33m[Warnings]\x1b[m\n")
