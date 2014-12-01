@@ -96,38 +96,51 @@ zstyle ':vcs_info:git:*'        actionformats   208 "[%a %b]"
 # key bindings: emacs style
 bindkey -e
 
-# history searching
-bindkey "^[[A"          history-beginning-search-backward
-bindkey "^[[B"          history-beginning-search-forward
+# retrieve key info from terminfo
+typeset -A keys
+keys[Home]=${terminfo[khome]}
+keys[End]=${terminfo[kend]}
+keys[Insert]=${terminfo[kich1]}
+keys[Delete]=${terminfo[kdch1]}
+keys[Up]=${terminfo[kcuu1]}
+keys[Down]=${terminfo[kcud1]}
+keys[Left]=${terminfo[kcub1]}
+keys[Right]=${terminfo[kcuf1]}
+keys[ShiftLeft]=${terminfo[kLFT]}
+keys[ShiftRight]=${terminfo[kRIT]}
+keys[PageUp]=${terminfo[kpp]}
+keys[PageDown]=${terminfo[knp]}
+keys[ShiftTab]=${terminfo[kcbt]}
 
-bindkey "^R"            history-incremental-pattern-search-backward
-bindkey "^S"            history-incremental-pattern-search-forward
+function trybindkey() {
+	key="$1"
+	binding="$2"
 
-# special keys for several terminals
-bindkey '^K'            kill-whole-line
-bindkey "\e[1~"         beginning-of-line # Home
-bindkey "\e[2~"         quoted-insert # Ins
-bindkey "\e[3~"         delete-char # Del
-bindkey "\e[4~"         end-of-line # End
-bindkey "\e[5~"         beginning-of-history # PageUp
-bindkey "\e[6~"         end-of-history # PageDown
-bindkey "\e[7~"         beginning-of-line # Home
-bindkey "\e[8~"         end-of-line # End
-bindkey "\e[5C"         forward-word
-bindkey "\e[5D"         backward-word
-bindkey "\e\e[C"        forward-word
-bindkey "\e\e[D"        backward-word
-bindkey "^[[1;5C"       forward-word
-bindkey "^[[1;5D"       backward-word
-bindkey "\eOc"          emacs-forward-word
-bindkey "\eOd"          emacs-backward-word
-bindkey "\e[Z"          reverse-menu-complete # Shift+Tab
-bindkey "\eOF"          end-of-line
-bindkey "\eOH"          beginning-of-line
-bindkey "\e[F"          end-of-line
-bindkey "\e[H"          beginning-of-line
-bindkey "\eOF"          end-of-line
-bindkey "\eOH"          beginning-of-line
+	keyval="${keys[$key]}"
+	if [ -n "${keyval}" ]; then
+		bindkey "${keyval}" "${binding}"
+	fi
+}
+
+# key bindings
+trybindkey Home       beginning-of-line
+trybindkey End        end-of-line
+trybindkey Insert     quoted-insert
+trybindkey Delete     delete-char
+trybindkey Up         history-beginning-search-backward
+trybindkey Down       history-beginning-search-forward
+trybindkey Left       backward-char
+trybindkey Right      forward-char
+trybindkey ShiftLeft  backward-word
+trybindkey ShiftRight forward-word
+trybindkey PageUp     beginning-of-history
+trybindkey PageDown   end-of-history
+trybindkey ShiftTab   reverse-menu-complete
+
+# emacs-y bindings
+bindkey "^R"                  history-incremental-pattern-search-backward
+bindkey "^S"                  history-incremental-pattern-search-forward
+bindkey '^K'                  kill-whole-line
 
 # command not found handler
 # arch
