@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# previews a github-flavoured markdown file in your browser, rendering it via github's API.
+
+function datasource() {
+	if [[ $1 ]]; then
+		cat "$1"
+	else
+		cat
+	fi
+}
+
+
+function sourcename() {
+	if [[ $1 ]]; then
+		echo "$1"
+	else
+		echo "stdin"
+	fi
+}
+
+
+function gethtml() {
+	echo '<!doctype html>
+	<html>
+		<head>
+			<meta charset="utf-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1, minimal-ui">
+			<title>'; sourcename "$@"; echo '</title>
+			<link rel="stylesheet" href="github-markdown.css">
+			<style>
+				body {
+					min-width: 200px;
+					max-width: 790px;
+					margin: 0 auto;
+					padding: 30px;
+				}
+			</style>
+		</head>
+		<body>
+			<article class="markdown-body">'
+	datasource "$@" | curl --data-binary @- -H "Content-Type:text/plain" -s https://api.github.com/markdown/raw
+	echo '          </article>
+		</body>
+	</html>'
+}
+
+
+outfile="`tempfile -s .md.html`"
+
+gethtml "$@" > "$outfile"
+
+$BROWSER "$outfile" 2>/dev/null
