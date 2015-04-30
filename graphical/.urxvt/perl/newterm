@@ -23,6 +23,7 @@ $cwd and the newterm command as arguments.
 Example configuration:
 
     URxvt.keysym.C-Enter:   perl:newwindow:open
+    URxvt.keysym.C-0:            perl:newwindow:openincognito
     URxvt.newterm-launcher: launch_at
     URxvt.newterm-command:  newterm
 
@@ -75,7 +76,19 @@ sub findfgpid {
 sub on_user_command {
     my ($self, $cmd) = @_;
 
-    return unless $cmd eq 'newwindow:open';
+    if ($cmd eq 'newwindow:open') {
+        open_new_term($self, "INCOGNITO=0");
+        return;
+    }
+
+    if ($cmd eq 'newwindow:openincognito') {
+        open_new_term($self, "INCOGNITO=1");
+        return;
+    }
+}
+
+sub open_new_term {
+    my ($self, $envvars) = @_;
 
     my $ptsname = ptsname $self->pty_fd;
     my ($fgpid, %ppids) = findfgpid $ptsname;
@@ -109,6 +122,6 @@ sub on_user_command {
     my $command=$self->x_resource("newterm-command")
         or die "X resource undefined: newterm-command - $!";
 
-    dbg "system $launcher, $cwd, $command";
-    system $launcher, $cwd, $command;
+    dbg "system $launcher, $cwd, 'env', $envvars, $command";
+    system $launcher, $cwd, 'env', $envvars, $command;
 }

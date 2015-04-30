@@ -180,7 +180,7 @@ class OpusConvert(CCCP):
             raise CCCP.UnfittingFile()
 
         self.ext = ext
-        self.dst = dstdir + '/' + barename + '.ogg'
+        self.dst = dstdir + '/' + barename + '.opus'
 
     def cccp(self):
         import subprocess

@@ -5,46 +5,49 @@
 !! note the british english.
 
 ! dpi
-Xft.dpi:                 96
+Xft.dpi:                     96
 
 ! colours
-URxvt*depth:             32
-URxvt.background:        Black
-URxvt.foreground:        rgb:AA00/AA00/AA00
+URxvt*depth:                 32
+URxvt.background:            Black
+URxvt.foreground:            rgb:AA00/AA00/AA00
 ! colours (alternate)
-! URxvt.background:      White
-! URxvt.foreground:      rgb:0000/0000/0000
+! URxvt.background:          White
+! URxvt.foreground:          rgb:0000/0000/0000
 
 ! fonts
-URxvt*font:              xft:monospace:size=11
+URxvt*font:                  xft:monospace:size=11
 
 ! make ctrl+shift available
-URxvt.iso14755:          false
-URxvt.iso14755_52:       false
+URxvt.iso14755:              false
+URxvt.iso14755_52:           false
 
 ! auto-scroll if and only if in last line
-URxvt.scrollTtyOutput:   false
-URxvt.scrollTtyKeypress: true
-URxvt.scrollWithBuffer:  true
+URxvt.scrollTtyOutput:       false
+URxvt.scrollTtyKeypress:     true
+URxvt.scrollWithBuffer:      true
 
 ! scrollbar style - rxvt (default), plain (most compact), next, or xterm
-URxvt.scrollstyle:       plain
-URxvt.scrollBar_right:   true
+URxvt.scrollstyle:           plain
+URxvt.scrollBar_right:       true
 
 ! extensions
-URxvt.perl-lib:          /home/mic/.urxvt/perl
-URxvt.perl-ext-common:   default,vtwheel,newterm
-URxvt.newterm-launcher:  launch_at
-URxvt.newterm-command:   newterm
+URxvt.perl-lib:              /home/mic/.urxvt/perl
+URxvt.perl-ext-common:       default,vtwheel,newterm
+URxvt.newterm-launcher:      launch_at
+URxvt.newterm-command:       newterm
 
 ! urgent flag
-URxvt.urgentOnBell:      true
+URxvt.urgentOnBell:          true
 
 ! new window
-URxvt.keysym.C-0:        perl:newwindow:open
+URxvt.keysym.C-0:            perl:newwindow:open
+URxvt.keysym.C-9:            perl:newwindow:openincognito
+URxvt.keysym.XF86Launch1:    perl:newwindow:open
+URxvt.keysym.C-XF86Launch1:  perl:newwindow:openincognito
 
 ! xterm
-XTerm*foreground:        rgb:aa/aa/aa
-XTerm*background:        rgb:00/00/00
-XTerm*faceName:          Liberation Mono:size=11:antialias=true
+XTerm*foreground:            rgb:aa/aa/aa
+XTerm*background:            rgb:00/00/00
+XTerm*faceName:              Liberation Mono:size=11:antialias=true
 

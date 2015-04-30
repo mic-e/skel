@@ -13,7 +13,7 @@ function datasource() {
 
 function sourcename() {
 	if [[ $1 ]]; then
-		echo "$1"
+		recode ascii..html <<< "$1"
 	else
 		echo "stdin"
 	fi
@@ -46,7 +46,7 @@ function gethtml() {
 }
 
 
-outfile="`tempfile -s .md.html`"
+outfile="`tempfile -p markdownpreview -s .html`"
 
 gethtml "$@" > "$outfile"
 

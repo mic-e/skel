@@ -17,9 +17,9 @@ alias vgahoh='xrandr --output VGA1 --auto --right-of LVDS1 --output LVDS1 --auto
 alias lvds='xrandr --output HDMI1 --off --output VGA1 --off --output LVDS1 --auto'
 alias lvdsoff='xrandr --output LVDS1 --off'
 
-alias wlanoff='rfkill block 0'
-alias wlan='rfkill unblock 0'
-alias 3goff='rfkill block 2'
-alias 3g='rfkill unblock 2'
+alias wlanoff='sudo rfkill block 2'
+alias wlan='sudo rfkill unblock 2'
+alias 3goff='sudo rfkill block 1'
+alias 3g='sudo rfkill unblock 1; sudo systemctl restart ModemManager.service'
 
 # vim: ft=sh

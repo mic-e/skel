@@ -10,6 +10,8 @@ def init():
 
     history = os.path.expanduser("~/.py_history")
 
+    readline.set_history_length(20000)
+
     def save_history():
         readline.write_history_file(history)
 
@@ -22,5 +24,8 @@ def init():
 
 init()
 del init
+
+import os
+import sys
 
 # vim: ft=python

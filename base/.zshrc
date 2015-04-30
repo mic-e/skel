@@ -13,10 +13,15 @@ setopt extended_glob longlistjobs completeinword hashlistall bash_rematch
 unsetopt autocd beep notify nomatch
 
 # command history
-HISTFILE=~/.zsh_history
-HISTSIZE=100000
-SAVEHIST=1000000
-setopt append_history share_history extended_history histverify histignorespace
+if [[ $INCOGNITO -gt 0 ]]; then
+	INCOGNITOPROMPT="%B%7F[I] %f%b"
+else
+	HISTFILE=~/.zsh_history
+	HISTSIZE=100000
+	SAVEHIST=1000000
+	setopt append_history share_history extended_history histverify histignorespace
+	INCOGNITOPROMPT=""
+fi
 
 # directory history
 setopt autopushd pushdminus pushdsilent pushdtohome
@@ -150,14 +155,14 @@ src /etc/zsh_command_not_found
 
 # the prompt
 precmd() {
-	echo -en '\x07' # bell
+	# echo -en '\x07' # bell
 	vcs_info
 	psvar[1]="$vcs_info_msg_0_"
 	psvar[2]="$vcs_info_msg_1_"
 }
 
-#       <        exit value         ><user@host>< cwd >< prompt (# or $) >
-PROMPT='%b%(0?..%5Ffail: %?%f'$'\n'')%2F%n@%m%f %6F%~%f %B%2F%(!.#.$)%f%b '
+#       <        exit value         ><user@host>                    < cwd >< prompt (# or $) >
+PROMPT='%b%(0?..%5Ffail: %?%f'$'\n'')%2F%n@%m%f '"$INCOGNITOPROMPT"'%6F%~%f %B%2F%(!.#.$)%f%b '
 #        <   bg jobs  ><  vcs branch   >
 RPROMPT='%(1j.%2F[%j].)%(V.%F{%v}%2v%f.)'
 

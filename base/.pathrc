@@ -7,6 +7,9 @@ pathadd() {
 	# adds all arguments to $PATH, if the directories exist,
 	# and if they're not already in $PATH.
 
+	PATHVAR="$1"
+	shift
+
 	for p in $@
 	do
 		local tmp=":$PATH:"
@@ -17,7 +20,9 @@ pathadd() {
 	done
 }
 
-pathadd /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ~/bin ~/games
+pathadd PATH /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ~/bin ~/games
+
+export PERL5LIB=/home/mic/perl5/lib/perl5
 
 test -f ~/.pathrc_graphical && . ~/.pathrc_graphical
 test -f ~/.pathrc_local && . ~/.pathrc_local
