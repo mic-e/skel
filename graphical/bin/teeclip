@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# runs getdata and writes the results to stdout and all three clipboards.
+
+data="$(getdata "$@")"
+
+# tee
+echo "$data"
+
+# write to all of those clipboards
+echo -n "$data" | xclip -selection primary
+echo -n "$data" | xclip -selection secondary
+echo -n "$data" | xclip -selection clipboard

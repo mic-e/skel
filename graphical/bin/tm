@@ -1,0 +1,4 @@
+#!/bin/bash
+# outputs 'tm' to all clipboards and stdout
+# this is a script instead of an alias to allow running from dmenu
+exec teeclip special tm

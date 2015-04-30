@@ -61,7 +61,7 @@ alias xseltoclip="xclip -o | xclip -i -selection clipboard"
 alias xcliptosel="xclip -selection clipboard -o | xclip -i"
 alias fgi="find | grep -i"
 alias dcc="dict.cc.py en de"
-alias tm="teeclip special tm"
+alias trackexec="sudo stap -e 'probe nd_syscall.execve { println(ppid(), \" \", execname(), \" -> \", pid(), \" \", argstr) }'"
 
 # update PATH
 src ~/.pathrc

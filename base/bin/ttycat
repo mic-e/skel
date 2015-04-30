@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+
+# simple script to monitor the data that's incoming at a TTY
+
+import argparse
+import serial
+import os
+
+cli = argparse.ArgumentParser("TTYCat")
+
+cli.add_argument("tty")
+cli.add_argument("--baud", type=int, default=38400)
+
+args = cli.parse_args()
+
+# The 8N1 format is used.
+tty = serial.Serial(args.tty, args.baud)
+
+try:
+    while True:
+        os.write(1, tty.read(1))
+except KeyboardInterrupt:
+    pass

@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# collects data from various sources, and prints it to stdout
+# mainly designed for usage by teeclip, but can be used standalone to print the clipboard contents.
+
+case "$1" in
+"clip")
+	xclip -o -selection clipboard
+	;;
+"sel")
+	xclip -o -selection primary
+	;;
+"stdin"|"")
+	cat
+	;;
+"file")
+	cat "$2"
+	;;
+"args")
+	shift
+	echo "$@"
+	;;
+"special")
+	shift
+	specialchar "$@"
+	;;
+*)
+	echo "$@"
+	;;
+esac

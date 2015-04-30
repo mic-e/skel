@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+
+"""
+Script to resolve 'special char' names to their UTF-8 representation.
+"""
+
+
+import sys
+
+
+# the translation table
+special_chars = {
+    "tm": "\u2122"
+}
+
+
+if len(sys.argv) < 2:
+    sys.stderr.write("you need to specify the special char\n")
+    exit(1)
+
+
+if not sys.argv[1] in special_chars:
+    sys.stderr.write("unknown special char\n")
+    exit(1)
+
+
+sys.stdout.write(special_chars[sys.argv[1]] + "\n")
