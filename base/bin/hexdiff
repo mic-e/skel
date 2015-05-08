@@ -1,25 +1,46 @@
 #!/usr/bin/env python3
+
+"""
+A little home-brewn binary diff utility.
+
+Calculates and prints the (hexdumpy) diff of any number of files.
+"""
+
 import math
 import itertools
-inf = float("+inf")
+
+INF = float("+inf")
 
 
-def roundtomultiple(number, multiple):
+def ceiltomultiple(number, multiple):
+    """
+    Rounds the given number up towards the next multiple of multiple.
+    """
     return multiple * (1 + (number - 1) // multiple)
 
 
-def finddiffplaces(files, chunksize=65536):
+def finddiffplaces(files, from_byte, byte_count, chunksize=65536):
     """
-    yields all positions where the files differ
+    Yields all positions where the files differ.
 
     @param files
-        list of File object (seek to desired pos)
+        list of File objects (seek to desired pos)
+    @param from_byte
+        seek to this position before searching
+    @param byte_count
+        stop searching after checking this many bytes
     @param chunksize
         internal read() chunk size
     """
-    pos = 0
-    while len(files) > 1:
-        chunks = [f.read(chunksize) for f in files]
+    for fileobj in files:
+        fileobj.seek(from_byte)
+
+    to_byte = from_byte + byte_count
+    pos = from_byte
+
+    while len(files) > 1 and pos < to_byte:
+        readsize = max(0, min(chunksize, to_byte - pos))
+        chunks = [f.read(readsize) for f in files]
 
         # remove EOF'd files
         files = [f for idx, f in enumerate(files) if chunks[idx]]
@@ -29,26 +50,31 @@ def finddiffplaces(files, chunksize=65536):
             # iterate over all bytes of the chunk
             # the 'manual' loop is required because we don't want to increment
             # on exception.
-            x = 0
-            while x < chunksize:
+            i = 0
+            while i < readsize:
                 try:
                     # compare byte x of the chunk (byte pos + x of the files)
-                    if len(set(c[x] for c in chunks)) > 1:
-                        yield pos + x
-                    x += 1
+                    if len(set(c[i] for c in chunks)) > 1:
+                        yield pos + i
+                    i += 1
                 except IndexError:
                     # we've reached the last byte of one of the files.
                     # remove the associated chunk.
-                    chunks = [c for c in chunks if len(c) > x]
+                    chunks = [chunk for chunk in chunks if len(chunk) > i]
 
-        pos += chunksize
+        pos += readsize
 
 
-def finddiffranges(files, rangetolerance=128):
+def finddiffranges(files, from_byte, byte_count, rangetolerance=128):
     """
-    yields ranges where binary files differ
+    Yields ranges where binary files differ.
+
     @param files
         list of File objects (seek to desired pos)
+    @param from_byte
+        seek to this position before searching
+    @param byte_count
+        stop searching after checking this many bytes
     @param rangetolerance
         if there are no errors for this many bytes, count the next as a new
         range.
@@ -56,7 +82,7 @@ def finddiffranges(files, rangetolerance=128):
     firstplace = None
     lastplace = None
 
-    for place in finddiffplaces(files):
+    for place in finddiffplaces(files, from_byte, byte_count):
         if firstplace is None:
             firstplace = lastplace = place
         elif place > lastplace + rangetolerance:
@@ -72,14 +98,18 @@ def finddiffranges(files, rangetolerance=128):
 def getdifflines(files, diffranges, bytesperline, poscolwidth,
                  extensionsize=100):
 
+    """
+    Converts diff ranges to text, and yields the lines.
+    """
+
     for start, end in diffranges:
         # yield a separator
         yield None
 
-        extensionsize = roundtomultiple(extensionsize, bytesperline)
+        extensionsize = ceiltomultiple(extensionsize, bytesperline)
         extendedstart = max(start - extensionsize, 0)
         extendedlen = extensionsize + end - extendedstart
-        extendedlen = roundtomultiple(extendedlen, bytesperline)
+        extendedlen = ceiltomultiple(extendedlen, bytesperline)
         extendedend = extendedstart + extendedlen
 
         chunks = []
@@ -88,7 +118,7 @@ def getdifflines(files, diffranges, bytesperline, poscolwidth,
             chunks.append(f.read(extendedlen))
 
         line = None
-        byteofline = inf
+        byteofline = INF
         posinchunk = 0
         for x in range(max(len(c) for c in chunks)):
             if byteofline >= bytesperline:
@@ -139,7 +169,18 @@ def getdifflines(files, diffranges, bytesperline, poscolwidth,
             yield line
 
 
-def printdiffrangetable(filenames, diffranges):
+def printdiffrangetable(filenames, diffranges, bytes_per_row):
+    """
+    Prints a set of diff ranges that were determined via finddiffranges.
+
+    @param filenames
+        Names of the input files
+    @param diffranges
+        Diff range list
+    @param bytes_per_row
+        Limit the maximum width of each row to this value.
+    """
+
     files = [open(name, 'rb') for name in filenames]
     filesizes = [f.seek(0, 2) for f in files]
     for f in files:
@@ -154,6 +195,7 @@ def printdiffrangetable(filenames, diffranges):
     if bytesperline <= 0:
         print("terminal not wide enough!")
         exit(1)
+    bytesperline = min(bytesperline, bytes_per_row)
     # how wide will each file column be?
     filecolwidth = bytesperline * 3 + 1
 
@@ -267,16 +309,23 @@ def main():
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument('files', metavar='FILE', nargs='+',
-                    help="files to compare")
+                   help="files to compare")
     p.add_argument('--merge-to',
-                    help="do an interactive merge, writing the result here.")
+                   help="do an interactive merge, writing the result here.")
+    p.add_argument('--from-byte', type=int, default=0,
+                   help="start at this position")
+    p.add_argument('--byte-count', type=int, default=INF,
+                   help="diff only this many bytes")
+    p.add_argument('--bytes-per-row', type=int, default=INF,
+                   help="limit bytes per row to this value")
 
     args = p.parse_args()
     if len(args.files) < 1:
         print("you need to specify multiple files for comparision.")
         exit(1)
 
-    diffranges = finddiffranges([open(name, 'rb') for name in args.files])
+    diffranges = finddiffranges([open(name, 'rb') for name in args.files],
+                                args.from_byte, args.byte_count)
     # we don't want to do any lazy execution
     diffranges, backup = itertools.tee(diffranges)
 
@@ -288,7 +337,7 @@ def main():
         exit(0)
 
     # print the state
-    printdiffrangetable(args.files, diffranges)
+    printdiffrangetable(args.files, diffranges, args.bytes_per_row)
 
     if not args.merge_to:
         return
