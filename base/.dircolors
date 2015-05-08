@@ -76,6 +76,9 @@ STICKY_OTHER_WRITABLE 48;5;235;38;5;139
 .PL                   38;5;85
 .pl                   38;5;85
 .py                   38;5;87
+.pyx                  38;5;123
+.pxd                  38;5;123;3
+.pxi                  38;5;123;3
 
 # config
 .cfg                  1
