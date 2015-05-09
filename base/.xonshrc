@@ -1,0 +1,1 @@
+$PROMPT='{GREEN}{user}@{hostname}{NO_COLOR} {CYAN}{cwd}{NO_COLOR} {BOLD_GREEN}${NO_COLOR} '
