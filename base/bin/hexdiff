@@ -19,7 +19,7 @@ def ceiltomultiple(number, multiple):
     return multiple * (1 + (number - 1) // multiple)
 
 
-def finddiffplaces(files, from_byte, byte_count, chunksize=65536):
+def finddiffplaces(files, from_byte, byte_count, limit, chunksize=65536):
     """
     Yields all positions where the files differ.
 
@@ -29,6 +29,8 @@ def finddiffplaces(files, from_byte, byte_count, chunksize=65536):
         seek to this position before searching
     @param byte_count
         stop searching after checking this many bytes
+    @param limit
+        stop searching after finding this many differing bytes
     @param chunksize
         internal read() chunk size
     """
@@ -56,6 +58,9 @@ def finddiffplaces(files, from_byte, byte_count, chunksize=65536):
                     # compare byte x of the chunk (byte pos + x of the files)
                     if len(set(c[i] for c in chunks)) > 1:
                         yield pos + i
+                        limit = limit - 1
+                        if limit <= 0:
+                            return
                     i += 1
                 except IndexError:
                     # we've reached the last byte of one of the files.
@@ -65,7 +70,7 @@ def finddiffplaces(files, from_byte, byte_count, chunksize=65536):
         pos += readsize
 
 
-def finddiffranges(files, from_byte, byte_count, rangetolerance=128):
+def finddiffranges(files, from_byte, byte_count, limit, rangetolerance=128):
     """
     Yields ranges where binary files differ.
 
@@ -75,6 +80,8 @@ def finddiffranges(files, from_byte, byte_count, rangetolerance=128):
         seek to this position before searching
     @param byte_count
         stop searching after checking this many bytes
+    @param limit
+        stop searching after finding this many differing bytes
     @param rangetolerance
         if there are no errors for this many bytes, count the next as a new
         range.
@@ -82,7 +89,7 @@ def finddiffranges(files, from_byte, byte_count, rangetolerance=128):
     firstplace = None
     lastplace = None
 
-    for place in finddiffplaces(files, from_byte, byte_count):
+    for place in finddiffplaces(files, from_byte, byte_count, limit):
         if firstplace is None:
             firstplace = lastplace = place
         elif place > lastplace + rangetolerance:
@@ -318,6 +325,9 @@ def main():
                    help="diff only this many bytes")
     p.add_argument('--bytes-per-row', type=int, default=INF,
                    help="limit bytes per row to this value")
+    p.add_argument('--limit', type=int, default=INF,
+                   help="stop searching after finding this many differing "
+                        "bytes")
 
     args = p.parse_args()
     if len(args.files) < 1:
@@ -325,7 +335,7 @@ def main():
         exit(1)
 
     diffranges = finddiffranges([open(name, 'rb') for name in args.files],
-                                args.from_byte, args.byte_count)
+                                args.from_byte, args.byte_count, args.limit)
     # we don't want to do any lazy execution
     diffranges, backup = itertools.tee(diffranges)
 
