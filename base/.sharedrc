@@ -47,6 +47,7 @@ alias woman="man"
 alias mtr="mtr -t"
 alias tmp=". tmp"
 alias pymv="noglob command pymv"
+alias vimv="noglob command vimv"
 alias dumbmount='mount -ouid=$UID,umask=022'
 alias tohex="baseconv 16"
 alias fromhex="baseconv -f 16 10"

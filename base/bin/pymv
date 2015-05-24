@@ -121,14 +121,14 @@ class Renamer(ABC):
     Implementations need to implement the matcher and replacer functions.
     """
     @abstractmethod
-    def match(self, filename):
+    def match(self, fname):
         """
         Checks whether filename is a to-be-renamed file.
         """
         pass
 
     @abstractmethod
-    def replace(self, filename):
+    def replace(self, fname):
         """
         Calculates the new filename for a given filename.
         """
@@ -150,27 +150,30 @@ class ExpressionRenamer(Renamer):
     """
     def __init__(self, matchexpr, replaceexpr):
         self.matchexpr = matchexpr
+        if replaceexpr in {'', '-', 'x'}:
+            replaceexpr = 'fname'
+
         self.replaceexpr = replaceexpr
 
     @staticmethod
-    def namespace(filename):
+    def namespace(fname):
         """
         Returns the namespace that contains the pre-defined variables during
         expression evaluation.
         """
         return {
-            'filename': filename,
+            'fname': fname,
             'os': os,
             're': re,
         }
 
-    def match(self, filename):
+    def match(self, fname):
         # pylint: disable=eval-used
-        return bool(eval(self.matchexpr, self.namespace(filename)))
+        return bool(eval(self.matchexpr, self.namespace(fname)))
 
-    def replace(self, filename):
+    def replace(self, fname):
         # pylint: disable=eval-used
-        return eval(self.replaceexpr, self.namespace(filename))
+        return eval(self.replaceexpr, self.namespace(fname))
 
 
 class RegexRenamer(Renamer):
@@ -191,7 +194,7 @@ class RegexRenamer(Renamer):
             matchregex = matchregex.replace("%%", "%")
             matchregex = "^" + matchregex + "$"
 
-            if replaceregex == '':
+            if replaceregex in {'', '-', 'x'}:
                 replaceregex = "\\g<0>"
             else:
                 callback = lambda m: "\\g<" + str(next(callback.ctr)) + ">"
@@ -208,11 +211,11 @@ class RegexRenamer(Renamer):
         self.pattern = pattern
         self.replaceregex = replaceregex
 
-    def match(self, filename):
-        return self.pattern.match(filename)
+    def match(self, fname):
+        return self.pattern.match(fname)
 
-    def replace(self, filename):
-        return self.pattern.sub(self.replaceregex, filename, 1)
+    def replace(self, fname):
+        return self.pattern.sub(self.replaceregex, fname, 1)
 
 
 def get_renamings(renamer, args, dirname=''):
