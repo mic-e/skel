@@ -1,188 +1,375 @@
 #!/usr/bin/env python3
+"""
+pymv: Versatile file renamer.
+
+Displays actions and asks for confirmation before doing any
+actual renaming.
+
+Not all command effects may be documented.
+"""
+
+from abc import ABC, abstractmethod
+from collections import defaultdict
+import itertools
 import os
-import collections
 import re
 import shutil
-import argparse
-import fcntl
+from subprocess import call
+import tempfile
 import termios
-import struct
-import sys
-import itertools
-inf = float("inf")
+INF = float("inf")
+
+
+def edit_renamings(args, renamings):
+    """
+    Opens a visual editor to allow the user to edit the renamings.
+
+    Yields the edited renamings.
+
+    Throws ValueError if the user has failed at editing.
+    """
+    namedlistfile = tempfile.NamedTemporaryFile('r+')
+    for _, tgtfile in renamings:
+        namedlistfile.write(tgtfile)
+        namedlistfile.write('\n')
+
+    namedlistfile.flush()
+
+    editor = os.environ.get('EDITOR')
+    if not editor:
+        editor = os.environ.get('VISUAL')
+    if not editor:
+        editor = 'vim'
+
+    if args.verbose:
+        print(editor + " " + namedlistfile.name)
+
+    if call([editor, namedlistfile.name]) != 0:
+        print("editor invocation failed")
+        exit(1)
+
+    namedlistfile.seek(0)
+    newnames = namedlistfile.read().split('\n')
+    if newnames and not newnames[-1]:
+        newnames.pop()
+
+    if len(newnames) != len(renamings):
+        raise ValueError("line count has changed")
+
+    for (srcfile, _), tgtfile in zip(renamings, newnames):
+        if not tgtfile:
+            raise ValueError("target file name for " + srcfile + " is empty")
+
+        yield srcfile, tgtfile
 
 
 def parse_args():
+    """
+    Parses CLI otpions and returns an argument dict.
+    """
     import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-d", "--depth", type=int, default=inf,
-                        help="subfolder search depth")
-    parser.add_argument("--no-confirm", action="store_true",
-                        help="don't ask for confirmation")
-    parser.add_argument("-p", "--preserve-emptied", action="store_true",
-                        help="don't auto-delete emptied directories")
-    parser.add_argument("--no-rename-dirs", action="store_true",
-                        help="only regular files will be renamed")
-    parser.add_argument("-v", "--verbose", action="store_true")
-    exprsyntax = parser.add_mutually_exclusive_group()
-    exprsyntax.add_argument("-f", "--functor", action="store_true",
-                            help="match and replace are lambdas")
+    cli = argparse.ArgumentParser("pymv")
+    cli.add_argument("-d", "--depth", type=int, default=INF,
+                     help="subfolder search depth")
+    cli.add_argument("--no-confirm", action="store_true",
+                     help="don't ask for confirmation")
+    cli.add_argument("-p", "--preserve-emptied", action="store_true",
+                     help="don't auto-delete emptied directories")
+    cli.add_argument("--no-rename-dirs", action="store_true",
+                     help="only regular files will be renamed")
+    cli.add_argument("-v", "--verbose", action="store_true")
+
+    exprsyntax = cli.add_mutually_exclusive_group()
+    exprsyntax.add_argument("-x", "--pyexps", action="store_true",
+                            help="match and replace are python expressions")
     exprsyntax.add_argument("-a", "--advanced", action="store_true",
                             help="match is a full-blown regex")
-    parser.add_argument("-i", "--ignore-case", action="store_true",
-                        help="ignore case for matching filenames")
-    parser.add_argument("match",
-                        help="expression to match the old filename against")
-    parser.add_argument("replace",
-                        help="new filename")
 
-    return parser.parse_args()
+    cli.add_argument("-i", "--ignore-case", action="store_true",
+                     help="ignore case for matching filenames")
+    cli.add_argument("-e", "--edit", action="store_true",
+                     help="open $EDITOR for manual renaming")
+    cli.add_argument("match",
+                     help="expression to match the old filename against")
+    cli.add_argument("replace",
+                     help="new filename")
+
+    return cli.parse_args()
 
 
-def ttywidth(fd=1):
-    if not os.isatty(fd):
-        return inf
+def ttywidth(unixfd=1):
+    """
+    Determines width of TTY at the given fd (default: stdout)
+    """
+    from fcntl import ioctl
+    import struct
+
+    if not os.isatty(unixfd):
+        return INF
 
     request = struct.pack('HHHH', 0, 0, 0, 0)
-    reply = fcntl.ioctl(fd, termios.TIOCGWINSZ, request)
-    h, w, hp, wp = struct.unpack('HHHH', reply)
+    reply = ioctl(unixfd, termios.TIOCGWINSZ, request)
+    _, width, _, _ = struct.unpack('HHHH', reply)
 
-    return w
+    return width
 
 
-def main(args):
-    if args.verbose:
-        print("argv:\n\t" + "\n\t".join(sys.argv))
+class Renamer(ABC):
+    """
+    Abstract base Renamer class; used by get_renamings.
 
-    # dynamic queue that contains all still-to-be-serached directories
-    dirstosearch = collections.deque([""])
+    Implementations need to implement the matcher and replacer functions.
+    """
+    @abstractmethod
+    def match(self, filename):
+        """
+        Checks whether filename is a to-be-renamed file.
+        """
+        pass
 
-    # contains all renamings as (from->to) tuples
-    renamings = []
+    @abstractmethod
+    def replace(self, filename):
+        """
+        Calculates the new filename for a given filename.
+        """
+        pass
 
-    # contains all dirs where files are being renamed, i.e. dirs that are
-    # flagged for deletion if they are empty after renaming.
-    dirswithrenamedfiles = set()
 
-    if args.functor:
-        matchfun = eval("lambda f: " + args.match)
-        replacefun = eval("lambda f: " + args.replace)
-    else:
-        if not args.advanced:
-            args.match = args.match.replace(".", "\.")
-            args.match = args.match.replace("*", "([^/]*)")
-            args.match = args.match.replace("?", "([^/])")
-            args.match = args.match.replace("%d", "([0-9]+)")
-            args.match = args.match.replace("%x", "*")
-            args.match = args.match.replace("%q", "?")
-            args.match = args.match.replace("%p", ".")
-            args.match = args.match.replace("%%", "%")
-            args.match = "^" + args.match + "$"
+class ExpressionRenamer(Renamer):
+    """
+    Renames files according to Python expressions.
 
-            cb = lambda m: "\g<" + str(next(cb.c)) + ">"
-            cb.c = itertools.count()
-            next(cb.c)
-            args.replace = re.sub("\\*", cb, args.replace)
+    In the expressions, 'os', 're', and 'filename' are defined.
 
-        print("matcher:  \x1b[31;1m" + args.match + "\x1b[m")
-        print("replacer: \x1b[31;1m" + args.replace + "\x1b[m")
+    Constructor arguments:
 
-        pattern = re.compile(args.match,
-                             flags=args.ignore_case and re.IGNORECASE or 0)
-        matchfun = pattern.match
-        replacefun = lambda f: pattern.sub(args.replace, f, 1)
+    matchexpr:
+        must evaluate to a boolean value; decides whether a file is renamed.
+    replaceexpr:
+        must evaluate to a string value; decides the new name of the file.
+    """
+    def __init__(self, matchexpr, replaceexpr):
+        self.matchexpr = matchexpr
+        self.replaceexpr = replaceexpr
 
-    while len(dirstosearch) > 0:
-        dirname = dirstosearch.pop()
-        for f in sorted(os.listdir("./" + dirname)):
-            if dirname:
-                f = dirname + "/" + f
-            isdir = os.path.isdir(f) and not os.path.islink(f)
-            renamed = False
-            if not args.no_rename_dirs or not isdir:
-                if matchfun(f):
-                    newname = os.path.relpath(replacefun(f))
-                    if newname != f:
-                        renamings.append((f, newname))
-                        renamed = True
-                        if not args.preserve_emptied:
-                            dirswithrenamedfiles.add(dirname)
-            if isdir and not renamed and f.count('/') < args.depth:
-                dirstosearch.appendleft(f)
+    @staticmethod
+    def namespace(filename):
+        """
+        Returns the namespace that contains the pre-defined variables during
+        expression evaluation.
+        """
+        return {
+            'filename': filename,
+            'os': os,
+            're': re,
+        }
 
-    # do a sanity check on renamings
+    def match(self, filename):
+        # pylint: disable=eval-used
+        return bool(eval(self.matchexpr, self.namespace(filename)))
+
+    def replace(self, filename):
+        # pylint: disable=eval-used
+        return eval(self.replaceexpr, self.namespace(filename))
+
+
+class RegexRenamer(Renamer):
+    """
+    Renames files according to regular expressions.
+
+    The syntax is pretty complicated.
+    """
+    def __init__(self, advanced, ignore_case, matchregex, replaceregex):
+        if not advanced:
+            matchregex = matchregex.replace(".", "\\.")
+            matchregex = matchregex.replace("*", "([^/]*)")
+            matchregex = matchregex.replace("?", "([^/])")
+            matchregex = matchregex.replace("%d", "([0-9]+)")
+            matchregex = matchregex.replace("%x", "*")
+            matchregex = matchregex.replace("%q", "?")
+            matchregex = matchregex.replace("%p", ".")
+            matchregex = matchregex.replace("%%", "%")
+            matchregex = "^" + matchregex + "$"
+
+            if replaceregex == '':
+                replaceregex = "\\g<0>"
+            else:
+                callback = lambda m: "\\g<" + str(next(callback.ctr)) + ">"
+                callback.ctr = itertools.count()
+                next(callback.ctr)
+                replaceregex = re.sub("\\*", callback, replaceregex)
+
+        print("matcher:  \x1b[31;1m" + matchregex + "\x1b[m")
+        print("replacer: \x1b[31;1m" + replaceregex + "\x1b[m")
+
+        pattern = re.compile(matchregex,
+                             flags=ignore_case and re.IGNORECASE or 0)
+
+        self.pattern = pattern
+        self.replaceregex = replaceregex
+
+    def match(self, filename):
+        return self.pattern.match(filename)
+
+    def replace(self, filename):
+        return self.pattern.sub(self.replaceregex, filename, 1)
+
+
+def get_renamings(renamer, args, dirname=''):
+    """
+    Searches the directory tree for files that match 'matchfun', and
+    calculates the new file names.
+
+    Yields tuples of oldfilename, newfilename.
+    """
+    for srcfile in sorted(os.listdir(os.path.join('.', dirname))):
+        if dirname:
+            srcfile = os.path.join(dirname, srcfile)
+        isdir = os.path.isdir(srcfile) and not os.path.islink(srcfile)
+        renamed = False
+
+        if not args.no_rename_dirs or not isdir:
+            if renamer.match(srcfile):
+                newname = os.path.relpath(renamer.replace(srcfile))
+                yield srcfile, newname
+                renamed = True
+
+        # recurse
+        if isdir and not renamed and srcfile.count('/') < args.depth:
+            try:
+                for renaming in get_renamings(renamer, args, srcfile):
+                    yield renaming
+            except PermissionError:
+                print("can not recursively descend into " + srcfile)
+
+
+def sanity_check_renamings(renamings):
+    """
+    Does a sanity check on a given list of renamings.
+    """
     errors = []
-    lookup = collections.defaultdict(lambda: set())
-    for f, t in renamings:
-        lookup[t].add(f)
-    for t, fs in lookup.items():
+    lookup = defaultdict(set)
+    for srcfile, tgtfile in renamings:
+        if not os.path.exists(srcfile):
+            errors.append("source file does not exist: " + srcfile)
+        lookup[tgtfile].add(srcfile)
+
+    for tgtfile, srcfiles in lookup.items():
         # check for identical target names
-        if len(fs) != 1:
-            errors.append("multiple files would be renamed to " + t + ":" +
-                          "\n\t" + "\n\t".join(sorted(fs)))
+        if len(srcfiles) != 1:
+            errors.append("multiple files would be renamed to "
+                          "'" + tgtfile + "'" +
+                          ":\n\t" + "\n\t".join(sorted(srcfiles)))
 
         # check for target names that already exist
-        if os.path.exists(t):
-            errors.append("can't move " + fs.pop() + " to " + t + ": " +
-                          "file exists.")
+        if os.path.exists(tgtfile):
+            errors.append("can't move " + srcfiles.pop() + " to " + tgtfile +
+                          ": file exists.")
 
     if errors:
         for error in errors:
             print(error)
         print("\nsanity check yielded " + str(len(errors)) + " errors.")
         print("refusing to continue.")
+        return False
+    else:
+        return True
+
+
+def confirm_renamings(renamings):
+    """
+    Prints the to-be-done renamings, and asks for confirmation.
+    """
+    maxf = max((len(f) for f, t in renamings))
+    maxt = max((len(t) for f, t in renamings))
+    ttyw = ttywidth()
+
+    print("")
+    if maxf + maxt + 3 <= ttyw:
+        # no need to worry about tty width
+        for srcfile, tgtfile in renamings:
+            print(srcfile.ljust(maxf) + " \x1b[32;1m>\x1b[m " + tgtfile)
+    else:
+        # use 1+ line for from/to each
+        for srcfile, tgtfile in renamings:
+            print("\x1b[36;1m>\x1b[m " + srcfile)
+            print("\x1b[32;1m>\x1b[m " + tgtfile)
+
+    print("\n" + str(len(renamings)) + " files will be renamed.")
+    try:
+        confirm = input("Do you want to continue [Y/n]? ")
+    except KeyboardInterrupt:
+        print("")
+        return False
+
+    return confirm in {"", "y", "Y"}
+
+
+def do_renaming(args, renamings):
+    """
+    Performs the given renamings.
+    """
+    for fromname, targetname in renamings:
+        targetdir = os.path.dirname(targetname)
+        if targetdir:
+            print("mkdir -p " + targetdir)
+            os.makedirs(targetdir, exist_ok=True)
+
+        shutil.move(fromname, targetname)
+
+        if not args.preserve_emptied:
+            # delete emptied dir
+
+            dirname = os.path.dirname(fromname)
+
+            while dirname:
+                if not os.path.isdir(dirname) or os.listdir(dirname):
+                    break
+
+                print("rmdir " + dirname)
+                os.rmdir(dirname)
+                dirname = os.path.dirname(dirname)
+
+
+def main(args):
+    """
+    pymv main function.
+    """
+    if args.verbose:
+        print(args)
+
+    if args.pyexps:
+        renamer = ExpressionRenamer(args.match, args.replace)
+    else:
+        renamer = RegexRenamer(args.advanced, args.ignore_case,
+                               args.match, args.replace)
+
+    # contains all dirs where files are being renamed, i.e. dirs that are
+    # flagged for deletion if they are empty after renaming.
+    renamings = list(get_renamings(renamer, args))
+
+    if args.edit and renamings:
+        try:
+            renamings = edit_renamings(args, renamings)
+        except ValueError as error:
+            print("you failed at editing:\n" + error.args[0])
+            return
+
+    renamings = [(srcfile, tgtfile) for srcfile, tgtfile in renamings
+                 if srcfile != tgtfile]
+
+    if not sanity_check_renamings(renamings):
         return
 
     if not renamings:
-        print("no matches")
+        print("nothing to be done")
         return
 
-    if not args.no_confirm:
-        # ask for confirmation
-        maxf = max((len(f) for f, t in renamings))
-        maxt = max((len(t) for f, t in renamings))
-        ttyw = ttywidth()
+    if not args.no_confirm and not confirm_renamings(renamings):
+        return
 
-        print("")
-        if maxf + maxt + 3 <= ttyw:
-            # no need to worry about tty width
-            for f, t in renamings:
-                print(f.ljust(maxf) + " \x1b[32;1m>\x1b[m " + t)
-        else:
-            # use 1+ line for from/to each
-            for f, t in renamings:
-                print("\x1b[36;1m>\x1b[m " + f)
-                print("\x1b[32;1m>\x1b[m " + t)
+    do_renaming(args, renamings)
 
-        print("\n" + str(len(renamings)) + " files will be renamed.")
-        try:
-            confirm = input("Do you want to continue [Y/n]? ")
-        except KeyboardInterrupt:
-            print("")
-            return
-
-        if confirm not in {"", "y", "Y"}:
-            return
-
-    # do the renaming
-    for f, t in renamings:
-        tdir = os.path.dirname(t)
-        if tdir and not os.path.exists(tdir):
-            print("mkdir " + tdir)
-            os.makedirs(tdir)
-
-        shutil.move(f, t)
-
-    # delete emptied dirs
-    for d in dirswithrenamedfiles:
-        while True:
-            if not d:
-                break
-            if os.listdir(d):
-                break
-            print("rmdir " + d)
-            os.rmdir(d)
-            d = os.path.relpath(d + '/..')
 
 if __name__ == '__main__':
     main(parse_args())
