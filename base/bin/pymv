@@ -315,8 +315,9 @@ def do_renaming(args, renamings):
     for fromname, targetname in renamings:
         targetdir = os.path.dirname(targetname)
         if targetdir:
-            print("mkdir -p " + targetdir)
-            os.makedirs(targetdir, exist_ok=True)
+            if not os.path.isdir(targetdir):
+                print("mkdir -p " + targetdir)
+                os.makedirs(targetdir)
 
         shutil.move(fromname, targetname)
 

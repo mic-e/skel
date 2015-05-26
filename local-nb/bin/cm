@@ -1,0 +1,159 @@
+#!/usr/bin/env python3
+"""
+Helper script to mount encrypted NBD.
+"""
+
+NBD_OPTS = ['10.4.2.2', '-N', 'crypt']
+NBD = '/dev/nbd0'
+CRYPTSETUP_OPTS = ["--cipher", "twofish-xts-plain64",
+                   "--key-size", "512",
+                   "--hash", "sha512"]
+CRYPTDEV = 'crypt'
+MOUNTPATH = '/media/crypt'
+MOUNTFLAGS = ["-t", "btrfs", "-o", "compress=zlib,noatime,user"]
+
+
+def main():
+    """
+    Main method for CLI usage
+    """
+    from argparse import ArgumentParser
+
+    cli = ArgumentParser()
+
+    cli.add_argument(
+        "stage", type=int, nargs='?',
+        help="mount to this stage.\n"
+             "0: unmounted;\n"
+             "1: nbd active;\n"
+             "2: dmcrypt active;\n"
+             "3: fs mounted")
+
+    target = cli.parse_args().stage
+
+    if target is None:
+        print("current stage: " + str(get_current_stage()))
+    else:
+        try:
+            set_stage(target)
+        except RuntimeError as exc:
+            print(exc.args[0])
+            exit(1)
+
+
+def set_stage(target):
+    """
+    Switches to the given stage.
+
+    Tries to backtrack down in case of an error.
+    """
+    current = get_current_stage()
+
+    try:
+        switch_stages(current, target)
+        return
+    except RuntimeError as exc:
+        print(exc.args[0])
+
+    target = current
+    current = get_current_stage()
+
+    if target < current:
+        try:
+            switch_stages(current, target)
+        except RuntimeError as exc:
+            print(exc.args[0])
+
+    raise RuntimeError("now at stage " + str(get_current_stage()))
+
+
+def switch_stages(current, tostage):
+    """
+    Performs the required steps to switch from 'current' to 'tostage'.
+    """
+    while current < tostage:
+        current += 1
+        enter_stage(current)
+
+    while current > tostage:
+        leave_stage(current)
+        current -= 1
+
+
+def get_current_stage():
+    """
+    Returns the current stage number.
+    """
+    from os import path
+    from subprocess import call
+
+    if call(['nbd-client', '-c', NBD], stdout=open('/dev/null', 'wb')) != 0:
+        return 0
+    elif not path.exists('/dev/mapper/' + CRYPTDEV):
+        return 1
+    elif not path.ismount(MOUNTPATH):
+        return 2
+    else:
+        return 3
+
+
+def run_cmd(cmd, errmsg="command failed"):
+    """
+    Attempts to run the given command, and raises RuntimeError if it fails.
+    """
+    from subprocess import call
+    from shlex import quote
+
+    print(" ".join(quote(arg) for arg in cmd))
+
+    if call(cmd) != 0:
+        raise RuntimeError(errmsg)
+
+
+def sudo(cmd, errmsg):
+    """
+    As run_cmd, but prefixes the cmd with 'sudo', if required.
+    """
+    from os import getuid
+    if getuid() != 0:
+        cmd = ["sudo"] + cmd
+
+    run_cmd(cmd, errmsg)
+
+
+def enter_stage(stageno):
+    """
+    Enters the stage with the given number.
+    """
+    if stageno == 1:
+        sudo(['nbd-client'] + NBD_OPTS + [NBD],
+             "could not create NBD")
+    elif stageno == 2:
+        sudo(['cryptsetup', 'create', CRYPTDEV, NBD] + CRYPTSETUP_OPTS,
+             "could not create crypt device")
+    elif stageno == 3:
+        sudo(['mount', '/dev/mapper/' + CRYPTDEV, MOUNTPATH] + MOUNTFLAGS,
+             "could not mount crypt device")
+    else:
+        raise RuntimeError("unknown stage number: " + str(stageno))
+
+
+def leave_stage(stageno):
+    """
+    Leaves the stage with the given number.
+    """
+    if stageno == 1:
+        sudo(['nbd-client', '-d', NBD],
+             "could not delete NBD")
+    elif stageno == 2:
+        sudo(['cryptsetup', 'remove', CRYPTDEV],
+             "could not remove crypt device")
+    elif stageno == 3:
+        sudo(['umount', '/dev/mapper/' + CRYPTDEV],
+             "could not umount crypt device")
+    else:
+        raise RuntimeError("unknown stage number: " + str(stageno))
+
+
+if __name__ == '__main__':
+    main()
