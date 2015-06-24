@@ -1,0 +1,21 @@
+#!/usr/bin/env python
+import os
+import sys
+
+if len(sys.argv) == 2 and ':' in sys.argv[1]:
+    invocation = [sys.argv[0]]
+    args = sys.argv[1].split(':')
+
+    filename, args = args[0], args[1:]
+    invocation.append(filename)
+
+    if len(args) == 0:
+        pass
+    elif len(args) == 1:
+        invocation.append('+' + args[0])
+    else:
+        invocation.append('+cal cursor(%s, %s)' % tuple(args[:2]))
+else:
+    invocation = sys.argv
+
+os.execl("/usr/bin/vim", *invocation)

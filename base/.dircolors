@@ -226,6 +226,7 @@ STICKY_OTHER_WRITABLE 48;5;235;38;5;139
 .mpeg                 38;5;208
 .ogm                  38;5;208
 .ogv                  38;5;208
+.rm                   38;5;208
 .rmvb                 38;5;208
 .sample               38;5;208
 .ts                   38;5;208

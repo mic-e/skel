@@ -63,6 +63,8 @@ alias xcliptosel="xclip -selection clipboard -o | xclip -i"
 alias fgi="find | grep -i"
 alias dcc="dict.cc.py en de"
 alias trackexec="sudo stap -e 'probe nd_syscall.execve { println(ppid(), \" \", execname(), \" -> \", pid(), \" \", argstr) }'"
+alias cy++="g++ -I /usr/include/python3.4m -std=c++14 -Wall -Wextra -pedantic -fPIC -shared"
+alias vim="vimwrapper"
 
 # update PATH
 src ~/.pathrc

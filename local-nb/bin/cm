@@ -71,13 +71,15 @@ def switch_stages(current, tostage):
     """
     Performs the required steps to switch from 'current' to 'tostage'.
     """
-    while current < tostage:
-        current += 1
-        enter_stage(current)
+    while current != tostage:
+        if current < tostage:
+            enter_stage(current + 1)
+        else:
+            leave_stage(current)
 
-    while current > tostage:
-        leave_stage(current)
-        current -= 1
+        current, old = get_current_stage(), current
+        if current == old:
+            raise RuntimeError("could not change stage")
 
 
 def get_current_stage():
