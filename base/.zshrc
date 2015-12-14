@@ -102,50 +102,81 @@ zstyle ':vcs_info:git:*'        actionformats   208 "[%a %b]"
 bindkey -e
 
 # retrieve key info from terminfo
-typeset -A keys
-keys[Home]=${terminfo[khome]}
-keys[End]=${terminfo[kend]}
-keys[Insert]=${terminfo[kich1]}
-keys[Delete]=${terminfo[kdch1]}
-keys[Up]=${terminfo[kcuu1]}
-keys[Down]=${terminfo[kcud1]}
-keys[Left]=${terminfo[kcub1]}
-keys[Right]=${terminfo[kcuf1]}
-keys[ShiftLeft]=${terminfo[kLFT]}
-keys[ShiftRight]=${terminfo[kRIT]}
-keys[PageUp]=${terminfo[kpp]}
-keys[PageDown]=${terminfo[knp]}
-keys[ShiftTab]=${terminfo[kcbt]}
+typeset -A key
+key[Backspace]=${terminfo[kbs]}
+key[Home]=${terminfo[khome]}
+key[End]=${terminfo[kend]}
+key[Insert]=${terminfo[kich1]}
+key[Delete]=${terminfo[kdch1]}
+key[Up]=${terminfo[kcuu1]}
+key[Down]=${terminfo[kcud1]}
+key[Left]=${terminfo[kcub1]}
+key[Right]=${terminfo[kcuf1]}
+key[PageUp]=${terminfo[kpp]}
+key[PageDown]=${terminfo[knp]}
+key[ShiftLeft]=${terminfo[kLFT]}
+key[ShiftRight]=${terminfo[kRIT]}
+key[ShiftTab]=${terminfo[kcbt]}
 
-function trybindkey() {
-	key="$1"
-	binding="$2"
+bindkey  "${key[Backspace]}" backward-delete-char
+bindkey  "${key[Home]}"      beginning-of-line
+bindkey  "${key[End]}"       end-of-line
+bindkey  "${key[Insert]}"    overwrite-mode
+bindkey  "${key[Delete]}"    delete-char
+bindkey  "${key[Up]}"        history-beginning-search-backward
+bindkey  "${key[Down]}"      history-beginning-search-forward
+bindkey  "${key[Left]}"      backward-char
+bindkey  "${key[Right]}"     forward-char
+bindkey  "${key[PageUp]}"    beginning-of-buffer-or-history
+bindkey  "${key[PageDown]}"  end-of-buffer-or-history
 
-	keyval="${keys[$key]}"
-	if [ -n "${keyval}" ]; then
-		bindkey "${keyval}" "${binding}"
-	fi
-}
+# make sure term is in application mode when zle is active
+if (( ${+terminfo[smkx]} )) && (( ${+terminfo[rmkx]} )); then
+    function zle-line-init () {
+        printf '%s' "${terminfo[smkx]}"
+    }
+    function zle-line-finish () {
+        printf '%s' "${terminfo[rmkx]}"
+    }
+    zle -N zle-line-init
+    zle -N zle-line-finish
+fi
 
-# key bindings
-trybindkey Home       beginning-of-line
-trybindkey End        end-of-line
-trybindkey Insert     quoted-insert
-trybindkey Delete     delete-char
-trybindkey Up         history-beginning-search-backward
-trybindkey Down       history-beginning-search-forward
-trybindkey Left       backward-char
-trybindkey Right      forward-char
-trybindkey ShiftLeft  backward-word
-trybindkey ShiftRight forward-word
-trybindkey PageUp     beginning-of-history
-trybindkey PageDown   end-of-history
-trybindkey ShiftTab   reverse-menu-complete
+if [[ "$TERM" != "xterm" ]]; then
+    bindkey "^H" backward-kill-word
+fi
 
-# emacs-y bindings
-bindkey "^R"                  history-incremental-pattern-search-backward
-bindkey "^S"                  history-incremental-pattern-search-forward
-bindkey '^K'                  kill-whole-line
+# get keys combos by "cat" or ctrl-v key
+bindkey "^R"    history-incremental-pattern-search-backward
+bindkey "^S"    history-incremental-pattern-search-forward
+
+#special keys for several terminals
+bindkey "\e[1~"         beginning-of-line     # Home
+bindkey "\e[2~"         quoted-insert         # Ins
+bindkey "\e[3~"         delete-char           # Del
+bindkey "\e[4~"         end-of-line           # End
+bindkey "\e[5~"         beginning-of-history  # PageUp
+bindkey "\e[6~"         end-of-history        # PageDown
+bindkey "\e[7~"         beginning-of-line     # Home
+bindkey "\e[8~"         end-of-line           # End
+bindkey "\e[5C"         forward-word
+bindkey "\e[5D"         backward-word
+bindkey "\e\e[C"        forward-word
+bindkey "\e\e[D"        backward-word
+bindkey "^[[1;5C"       forward-word
+bindkey "^[[1;5D"       backward-word
+bindkey "\eOc"          emacs-forward-word
+bindkey "\eOd"          emacs-backward-word
+bindkey "\e[Z"          reverse-menu-complete # Shift+Tab
+bindkey "\eOF"          end-of-line
+bindkey "\eOH"          beginning-of-line
+bindkey "\e[F"          end-of-line
+bindkey "\e[H"          beginning-of-line
+bindkey "\eOF"          end-of-line
+bindkey "\eOH"          beginning-of-line
+bindkey "^[d"           kill-word
+bindkey "^[[3^"         kill-word
+
 
 # command not found handler
 # arch
