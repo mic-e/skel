@@ -53,7 +53,7 @@ bindsym $mod+F11 fullscreen
 #change container layout (stacked, tabbed, default)
 bindsym $mod+s layout stacking
 bindsym $mod+w layout tabbed
-bindsym $mod+e layout default
+bindsym $mod+e layout toggle split
 
 #toggle tiling / floating
 bindsym $mod+Shift+space floating toggle
@@ -137,7 +137,7 @@ mode "resize" {
 
 bindsym $mod+r mode "resize"
 
-bindsym $mod+Pause exec --no-startup-id lock suspend 1>/dev/null 2>/dev/null
+bindsym $mod+Pause exec --no-startup-id i3lock && sudo systemctl suspend 1>/dev/null 2>/dev/null
 
 exec --no-startup-id pulseaudio -D
 exec --no-startup-id nm-applet 2>&1 > /tmp/nm-applet-out-1000
