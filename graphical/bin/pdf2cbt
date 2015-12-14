@@ -2,9 +2,9 @@
 #
 # converts a PDF image collection to cbt
 
-TMP="/tmp/$0-$(date +%s)-$RANDOM$RANDOM"
-mkdir -p "$TMP"
+TMP="`mktemp -d`"
 pdftohtml -nodrm "$1" "$TMP/tmp.html"
-rm $TMP/*.html
-tar -C $TMP . > "$1"
+rm "$TMP"/*.html
+tar c -C "$TMP" . > "$1.cbt"
+echo "tar -C $TMP . > \"$1.cbt\""
 rm -r "$TMP"
