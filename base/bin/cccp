@@ -27,14 +27,13 @@ def flag():
 
 
 def parse_args():
-    """
-    your typical argparser
-    """
 
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument('--opus', type=int,
                    help='convert WAV, MP3, FLAC to OGG/Opus (specify kbit/s)')
+    p.add_argument('--require-tags', action='store_true',
+                   help='interrupt if no tags are available for an opus file')
     p.add_argument('srcs', nargs='+', metavar='FILE')
     p.add_argument('dstdir', metavar='TARGET')
 
@@ -44,9 +43,7 @@ def parse_args():
 
 
 class CCCPError(Exception):
-    """
-    base exception class
-    """
+    """ base exception type """
     pass
 
 
@@ -182,20 +179,52 @@ class OpusConvert(CCCP):
         self.ext = ext
         self.dst = dstdir + '/' + barename + '.opus'
 
+    def guess_tags(self):
+        """
+        Tries to guess tags from the name self.src.
+        Returns a tuple of Artist, Year, Album, Number, Title.
+        Raises ValueError on failure.
+        """
+        components = os.path.abspath(self.src).split(os.path.sep)
+        artist, year_album, number_title = components[-3:]
+        year, album = year_album.split(' ', maxsplit=1)
+        number, title = number_title.split(' ', maxsplit=1)
+        int(year)
+        int(number)
+        return artist, year, album, number, title
+
     def cccp(self):
         import subprocess
         print("opusenc '" + self.src + "' '" + self.dst + "'")
 
+        encoder_args = ['opusenc', '--bitrate', self.quality]
+        try:
+            artist, year, album, number, title = self.guess_tags()
+            encoder_args.append("--artist=" + artist)
+            encoder_args.append("--date=" + year)
+            encoder_args.append("--album=" + album)
+            encoder_args.append("--comment=TRACKNUMBER=" + number)
+            encoder_args.append("--title=" + title)
+        except ValueError as exc:
+            if self.require_tags:
+                print("could not determine tags for " + self.src)
+                print(exc)
+                input("< enter > to continue")
+
+        encoder_args.append('--')
+
         if self.ext == 'mp3':
             decoder = subprocess.Popen(['mpg123', '-w', '-', self.src],
                                         stdout=subprocess.PIPE)
-            encoder = subprocess.Popen(['opusenc', '--bitrate', self.quality,
-                                        '--', '-', self.dst],
-                                        stdin=decoder.stdout)
+            encoder_args.append('-')
+            encoder_args.append(self.dst)
+            encoder = subprocess.Popen(encoder_args, stdin=decoder.stdout)
+
             encoder.communicate()
         elif self.ext == 'flac' or self.ext == 'wav':
-            subprocess.call(['opusenc', '--bitrate', self.quality,
-                             '--', self.src, self.dst])
+            encoder_args.append(self.src)
+            encoder_args.append(self.dst)
+            subprocess.call(encoder_args)
         else:
             raise CCCPError('OpusConvert: wrong file ext on ' + self.src)
 
@@ -205,6 +234,7 @@ def main():
 
     if args.opus:
         OpusConvert.quality = str(args.opus)
+        OpusConvert.require_tags = args.require_tags
         CCCP.active_cccps.append(OpusConvert)
     CCCP.active_cccps.append(CPDir)
     CCCP.active_cccps.append(CPFile)

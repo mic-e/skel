@@ -23,7 +23,7 @@ else
 fi
 
 cuebreakpoints "$1.utf8.cue" | shnsplit -o flac "$1"
-cuetag.sh "$1.utf8.cue" split-track*
+cuetag "$1.utf8.cue" split-track*
 for f in split-track*; do
 	mv $f "`metaflac --show-tag TRACKNUMBER --show-tag TITLE $f | awk -F= '{printf "%s\n", $2}' | tr '\n' '=' | awk -F= '{printf "%02u %s.flac", $1, $2}'`"
 done
