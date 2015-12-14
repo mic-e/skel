@@ -23,7 +23,7 @@ $cwd and the newterm command as arguments.
 Example configuration:
 
     URxvt.keysym.C-Enter:   perl:newwindow:open
-    URxvt.keysym.C-0:            perl:newwindow:openincognito
+    URxvt.keysym.C-0:       perl:newwindow:openincognito
     URxvt.newterm-launcher: launch_at
     URxvt.newterm-command:  newterm
 
@@ -83,6 +83,20 @@ sub on_user_command {
 
     if ($cmd eq 'newwindow:openincognito') {
         open_new_term($self, "INCOGNITO=1");
+        return;
+    }
+
+    if ($cmd eq 'newwindow:printfgpid') {
+        my $ptsname = ptsname $self->pty_fd;
+
+        if($self->{overlay}) {
+            $self->{timer} = 0;
+            $self->{overlay} = 0;
+        } else {
+            $self->{timer} = urxvt::timer->new->interval(0.1)->cb(sub {
+                $self->{overlay} = $self->overlay_simple(-1, 0, findfgpid $ptsname);
+            });
+        }
         return;
     }
 }

@@ -57,6 +57,7 @@ URxvt.keysym.C-0:            perl:newwindow:open
 URxvt.keysym.C-9:            perl:newwindow:openincognito
 URxvt.keysym.XF86Launch1:    perl:newwindow:open
 URxvt.keysym.C-XF86Launch1:  perl:newwindow:openincognito
+URxvt.keysym.C-8:            perl:newwindow:printfgpid
 
 ! xterm
 XTerm*foreground:            rgb:aa/aa/aa
