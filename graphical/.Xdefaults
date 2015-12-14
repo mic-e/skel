@@ -15,6 +15,9 @@ URxvt.foreground:            rgb:AA00/AA00/AA00
 ! URxvt.background:          White
 ! URxvt.foreground:          rgb:0000/0000/0000
 
+! buffer size
+URxvt*saveLines:             200000
+
 ! fonts
 URxvt*font:                  xft:monospace:size=11
 
@@ -36,6 +39,15 @@ URxvt.perl-lib:              /home/mic/.urxvt/perl
 URxvt.perl-ext-common:       default,vtwheel,newterm
 URxvt.newterm-launcher:      launch_at
 URxvt.newterm-command:       newterm
+
+! more readable blue
+URxvt.color4:                rgb:5c/5c/ff
+URxvt.color12:               rgb:5c/5c/ff
+
+! italic bold and underline colors
+URxvt.colorIT:               rgb:87/af/5f
+URxvt.colorBD:               rgb:d7/d7/d7
+URxvt.colorUL:               rgb:87/af/d7
 
 ! urgent flag
 URxvt.urgentOnBell:          true
