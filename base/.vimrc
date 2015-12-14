@@ -73,18 +73,13 @@ endfunction
 call WST(8)
 " filetypes where whitespaces are preferred
 autocmd FileType python,perl,pyrex,markdown call WSS(4)
+autocmd BufRead * if search(' ') && !search('\t') | call WSS(4) | endif
+
 
 " short commands for manual usage
 cmap ws2 call WSS(2)
 cmap ws4 call WSS(4)
 cmap wst call WST(8)
 
-no <down> <Nop>
-no <left> <Nop>
-no <right> <Nop>
-no <up> <Nop>
 
-ino <down> <Nop>
-ino <left> <Nop>
-ino <right> <Nop>
-ino <up> <Nop>
+colorscheme desert
