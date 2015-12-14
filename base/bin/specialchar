@@ -10,7 +10,8 @@ import sys
 
 # the translation table
 special_chars = {
-    "tm": "\u2122"
+    "tm": "\u2122",
+    "geld": "\u00a4"
 }
 
 
