@@ -4,17 +4,25 @@ import sys
 
 if len(sys.argv) == 2 and ':' in sys.argv[1]:
     invocation = [sys.argv[0]]
-    args = sys.argv[1].split(':')
 
-    filename, args = args[0], args[1:]
+    args = sys.argv[1].split(':')
+    filename, strargs = args[0], args[1:]
     invocation.append(filename)
+
+    args = []
+    try:
+        for strarg in strargs:
+            args.append(int(strarg))
+    except ValueError:
+        pass
 
     if len(args) == 0:
         pass
     elif len(args) == 1:
-        invocation.append('+' + args[0])
+        invocation.append('+%d' % args[0])
     else:
-        invocation.append('+cal cursor(%s, %s)' % tuple(args[:2]))
+        invocation.append('+cal cursor(%d, %d)' % tuple(args[:2]))
+
 else:
     invocation = sys.argv
 
